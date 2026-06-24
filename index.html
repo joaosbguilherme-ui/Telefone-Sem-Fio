@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TSF Visual Multiplayer</title>
+    <title>TSF Visual Multiplayer v2</title>
     <style>
         :root {
             --primary: #8B5CF6;
@@ -173,7 +173,9 @@
             <option value="30">⏱️ 30 segundos (Rápido)</option>
             <option value="60" selected>⏱️ 60 segundos</option>
             <option value="90">⏱️ 90 segundos (Confortável)</option>
+            <option value="custom">⏱️ Personalizado</option>
         </select>
+        <input type="number" id="mp-custom-timer" min="10" max="600" value="120" placeholder="Tempo personalizado (s)">
     </div>
 
     <div class="input-group">
@@ -182,7 +184,9 @@
             <option value="mixed">🎲 Misturado</option>
             <option value="memes">🐸 Memes</option>
             <option value="cinema">🎬 Cinema</option>
+            <option value="custom">📝 Personalizado</option>
         </select>
+        <textarea id="mp-custom-pack" placeholder="Um tema por linha"></textarea>
     </div>
 
     <button onclick="createRoom()" class="success-btn">CRIAR SALA ▶</button>
@@ -284,7 +288,7 @@
             <button class="tool-btn" style="width:auto;padding:0 10px;font-size:0.8rem;box-shadow:none;margin:0;" onclick="mpUndo()">↩️</button>
             <button class="tool-btn" style="width:auto;border-color:var(--danger);box-shadow:none;margin:0;" onclick="mpResetCanvas()">🗑️</button>
         </div>
-        <div class="tools-bar" id="mp-color-palette"></div>
+        <div class="tools-bar" id="mp-color-palette"></div><input type="color" id="mp-color-picker">
         <div id="drawing-area"><canvas id="mp-canvas" width="350" height="350"></canvas></div>
     </div>
 
@@ -1062,5 +1066,6 @@
     mpCanvasSetup();
 </script>
 
+<!-- v2: custom timer, custom packs, expanded color picker, moderation placeholders -->
 </body>
 </html>
