@@ -3,20 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TSF Visual Multiplayer v2</title>
+    <title>TSF Visual Multiplayer v3</title>
     <style>
         :root {
             --primary: #8B5CF6;
             --primary-glow: rgba(139, 92, 246, 0.5);
             --secondary: #EC4899;
-            --bg-grad: linear-gradient(135deg, #0f172a 0%, #312e81 100%);
-            --glass-bg: rgba(15, 23, 42, 0.88);
+            --bg-grad: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+            --glass-bg: rgba(15, 23, 42, 0.92);
             --glass-border: 1px solid rgba(255, 255, 255, 0.1);
             --text: #F8FAFC;
             --danger: #EF4444;
             --gold: #F59E0B;
             --success: #22c55e;
             --warn: #f97316;
+            --info: #38bdf8;
+            --surface: rgba(255,255,255,0.04);
+            --surface-hover: rgba(255,255,255,0.08);
         }
 
         * { box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
@@ -28,106 +31,222 @@
         }
 
         .glass-panel {
-            background: var(--glass-bg); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-            border: var(--glass-border); box-shadow: 0 8px 32px 0 rgba(0,0,0,0.5);
-            border-radius: 20px; transition: transform 0.3s;
+            background: var(--glass-bg); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+            border: var(--glass-border); box-shadow: 0 8px 40px 0 rgba(0,0,0,0.6);
+            border-radius: 22px; transition: transform 0.3s;
         }
 
         .screen {
-            display: none; width: 95%; max-width: 550px; padding: 25px; margin: 20px 0;
+            display: none; width: 95%; max-width: 550px; padding: 24px; margin: 20px 0;
             flex-direction: column; animation: slideUp 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
-            position: relative; z-index: 10; padding-bottom: 50px;
+            position: relative; z-index: 10; padding-bottom: 44px;
         }
         .screen.active { display: flex; }
 
-        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
         h1 { margin: 0 0 10px 0; font-weight: 800; letter-spacing: -1px; text-shadow: 0 4px 15px rgba(0,0,0,0.5); font-size: 2rem; }
-        h2 { margin: 5px 0 15px 0; font-size: 1.4rem; color: #cbd5e1; }
+        h2 { margin: 5px 0 16px 0; font-size: 1.35rem; color: #cbd5e1; }
         p { color: #94a3b8; line-height: 1.6; }
 
         .badge { background: var(--secondary); padding: 3px 8px; border-radius: 6px; font-size: 0.7rem; vertical-align: middle; margin-left: 8px; box-shadow: 0 0 10px var(--secondary); }
         .badge.success { background: var(--success); box-shadow: 0 0 10px var(--success); }
         .badge.warn { background: var(--warn); box-shadow: 0 0 10px var(--warn); }
 
-        .input-group { width: 100%; text-align: left; margin-bottom: 15px; }
-        label { display: block; margin-bottom: 6px; font-size: 0.85rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
-        input[type="text"], input[type="number"], select, textarea {
-            width: 100%; padding: 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.15);
-            background: rgba(0,0,0,0.3); color: white; font-size: 16px; transition: 0.2s;
+        .input-group { width: 100%; text-align: left; margin-bottom: 14px; }
+        label { display: block; margin-bottom: 6px; font-size: 0.82rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+        input[type="text"], input[type="number"], input[type="password"], select, textarea {
+            width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.12);
+            background: rgba(0,0,0,0.32); color: white; font-size: 16px; transition: 0.2s;
         }
         input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-glow); background: rgba(0,0,0,0.5); }
+        select option { background: #1e1b4b; color: white; }
+
+        /* Conditional fields */
+        .conditional-field { overflow: hidden; max-height: 0; opacity: 0; transition: max-height 0.35s ease, opacity 0.3s ease, margin 0.3s ease; margin-top: 0; }
+        .conditional-field.visible { max-height: 200px; opacity: 1; margin-top: 10px; }
+        .conditional-field textarea, .conditional-field input { margin-top: 0; }
 
         button {
-            background: var(--primary); color: white; border: none; padding: 16px; border-radius: 14px;
+            background: var(--primary); color: white; border: none; padding: 15px; border-radius: 14px;
             font-size: 1rem; font-weight: 800; cursor: pointer; transition: all 0.1s;
-            width: 100%; box-shadow: 0 4px 0px #5b21b6; margin-top: 10px; position: relative; top: 0;
+            width: 100%; box-shadow: 0 4px 0px #4c1d95; margin-top: 10px; position: relative; top: 0;
+            letter-spacing: 0.3px;
         }
-        button:active { top: 4px; box-shadow: 0 0 0 #5b21b6; }
-        button.secondary { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); box-shadow: none; }
-        button.danger { background: rgba(239,68,68,0.2); color: #fca5a5; border: 1px solid var(--danger); box-shadow: none; }
-        button.success-btn { background: var(--success); box-shadow: 0 4px 0px #166534; }
-        button.success-btn:active { box-shadow: 0 0 0 #166534; }
+        button:active { top: 4px; box-shadow: 0 0 0 #4c1d95; }
+        button.secondary { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.18); box-shadow: none; }
+        button.secondary:active { top: 0; }
+        button.danger { background: rgba(239,68,68,0.15); color: #fca5a5; border: 1px solid rgba(239,68,68,0.4); box-shadow: none; }
+        button.danger:active { top: 0; }
+        button.success-btn { background: var(--success); box-shadow: 0 4px 0px #14532d; }
+        button.success-btn:active { box-shadow: 0 0 0 #14532d; }
+        button.icon-btn { width: auto; padding: 0 12px; height: 36px; font-size: 0.78rem; box-shadow: none; margin: 0; border-radius: 10px; }
 
         .timer-bar-wrap { width: 100%; height: 5px; background: rgba(255,255,255,0.08); border-radius: 3px; margin: 6px 0 12px 0; overflow: hidden; }
         .timer-fill { height: 100%; border-radius: 3px; background: var(--success); width: 100%; transition: width 0.5s linear, background 0.4s; }
         .timer-fill.warn { background: var(--warn); }
         .timer-fill.danger { background: var(--danger); }
 
-        /* ═══════ LOBBY ═══════ */
-        .player-card { background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 12px 16px; margin: 8px 0; display: flex; justify-content: space-between; align-items: center; }
-        .player-name { font-weight: 700; color: white; }
-        .player-status { font-size: 0.75rem; color: #64748b; }
-        .player-status.online { color: var(--success); }
-        .badge-host { background: rgba(139,92,246,0.2); color: var(--primary); border: 1px solid rgba(139,92,246,0.4); padding: 2px 8px; border-radius: 5px; font-size: 0.65rem; font-weight: 700; }
+        /* ═══ SECTION DIVIDER ═══ */
+        .section-label {
+            font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+            color: #475569; display: flex; align-items: center; gap: 8px; margin: 16px 0 10px 0;
+        }
+        .section-label::before, .section-label::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,0.07); }
 
-        /* ═══════ CODE DISPLAY ═══════ */
-        .code-display { background: rgba(139,92,246,0.15); border: 2px dashed rgba(139,92,246,0.5); border-radius: 12px; padding: 16px; text-align: center; margin: 12px 0; }
-        .code-text { font-size: 2.4rem; font-weight: 900; letter-spacing: 0.5rem; font-family: 'Courier New', monospace; color: var(--primary); margin: 8px 0; }
-        .code-hint { font-size: 0.75rem; color: #64748b; margin-top: 4px; }
+        /* ═══ LOBBY ═══ */
+        .player-card {
+            background: rgba(0,0,0,0.28); border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 14px; padding: 11px 14px; margin: 7px 0;
+            display: flex; justify-content: space-between; align-items: center;
+            transition: border-color 0.2s;
+        }
+        .player-card:hover { border-color: rgba(255,255,255,0.16); }
+        .player-card.offline { opacity: 0.55; }
+        .player-card.banned { opacity: 0.4; }
 
-        /* ═══════ THEME INPUT ═══════ */
+        .player-info { display: flex; align-items: center; gap: 10px; }
+        .player-avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.95rem; flex-shrink: 0; }
+        .player-name { font-weight: 700; color: white; font-size: 0.95rem; }
+        .player-status-text { font-size: 0.72rem; margin-top: 1px; display: flex; align-items: center; gap: 4px; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
+        .status-dot.online { background: var(--success); box-shadow: 0 0 6px var(--success); }
+        .status-dot.reconnecting { background: var(--gold); box-shadow: 0 0 6px var(--gold); animation: pulse 1.2s infinite; }
+        .status-dot.offline { background: var(--danger); }
+        .player-badges { display: flex; gap: 5px; align-items: center; flex-shrink: 0; }
+        .badge-host { background: rgba(139,92,246,0.2); color: var(--primary); border: 1px solid rgba(139,92,246,0.4); padding: 2px 8px; border-radius: 5px; font-size: 0.63rem; font-weight: 800; letter-spacing: 0.5px; }
+
+        /* Host action buttons */
+        .host-actions { display: flex; gap: 5px; flex-shrink: 0; }
+        .host-action-btn {
+            width: 30px; height: 30px; border-radius: 8px; border: none; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; font-size: 0.8rem;
+            transition: 0.15s; background: rgba(255,255,255,0.07);
+        }
+        .host-action-btn.kick { background: rgba(251,191,36,0.15); color: #fbbf24; }
+        .host-action-btn.kick:hover { background: rgba(251,191,36,0.3); }
+        .host-action-btn.ban { background: rgba(239,68,68,0.15); color: #f87171; }
+        .host-action-btn.ban:hover { background: rgba(239,68,68,0.3); }
+
+        /* ═══ CODE DISPLAY ═══ */
+        .code-display { background: rgba(139,92,246,0.12); border: 2px dashed rgba(139,92,246,0.4); border-radius: 14px; padding: 14px 20px; text-align: center; margin: 10px 0; }
+        .code-text { font-size: 2.3rem; font-weight: 900; letter-spacing: 0.55rem; font-family: 'Courier New', monospace; color: var(--primary); margin: 6px 0; text-shadow: 0 0 20px var(--primary-glow); }
+        .code-hint { font-size: 0.72rem; color: #64748b; }
+
+        /* ═══ LOBBY CHAT ═══ */
+        .chat-section { margin-top: 12px; }
+        .chat-box {
+            background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px; height: 160px; overflow-y: auto; padding: 10px;
+            text-align: left; display: flex; flex-direction: column; gap: 5px;
+            scroll-behavior: smooth;
+        }
+        .chat-box::-webkit-scrollbar { width: 4px; }
+        .chat-box::-webkit-scrollbar-track { background: transparent; }
+        .chat-box::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+        .chat-msg { font-size: 0.8rem; line-height: 1.4; word-break: break-word; }
+        .chat-msg .chat-sender { font-weight: 700; color: var(--primary); margin-right: 4px; }
+        .chat-msg.system-msg { color: #475569; font-style: italic; font-size: 0.75rem; }
+        .chat-msg.host-msg .chat-sender { color: var(--gold); }
+        .chat-msg.own-msg .chat-sender { color: var(--success); }
+
+        .chat-input-row { display: flex; gap: 7px; margin-top: 8px; }
+        .chat-input-row input { flex: 1; padding: 9px 12px; font-size: 0.88rem; border-radius: 10px; }
+        .chat-input-row button { width: auto; padding: 0 16px; margin: 0; border-radius: 10px; box-shadow: none; font-size: 0.85rem; }
+
+        /* ═══ PUBLIC ROOMS ═══ */
+        .public-room-card {
+            background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 14px; padding: 13px 16px; margin: 8px 0;
+            display: flex; justify-content: space-between; align-items: center;
+            cursor: pointer; transition: 0.2s;
+        }
+        .public-room-card:hover { border-color: rgba(139,92,246,0.5); background: rgba(139,92,246,0.06); }
+        .room-info { text-align: left; }
+        .room-name { font-weight: 700; color: white; font-size: 0.95rem; }
+        .room-meta { font-size: 0.75rem; color: #64748b; margin-top: 2px; }
+        .room-players-badge { background: rgba(34,197,94,0.15); color: var(--success); border: 1px solid rgba(34,197,94,0.3); padding: 4px 10px; border-radius: 8px; font-size: 0.75rem; font-weight: 700; white-space: nowrap; }
+        .room-locked { font-size: 0.8rem; color: var(--gold); margin-left: 6px; }
+
+        /* ═══ THEME INPUT ═══ */
         .theme-progress { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; justify-content: center; }
-        .progress-dot { width: 32px; height: 32px; border-radius: 50%; background: rgba(255,255,255,0.12); display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; border: 1px solid rgba(255,255,255,0.2); transition: 0.2s; }
+        .progress-dot { width: 30px; height: 30px; border-radius: 50%; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; font-size: 0.72rem; font-weight: 700; border: 1px solid rgba(255,255,255,0.15); transition: 0.2s; }
         .progress-dot.done { background: var(--success); border-color: var(--success); color: white; }
         .progress-dot.current { background: var(--primary); border-color: var(--primary); color: white; animation: pulse 1.5s infinite; }
 
-        /* ═══════ WAITING SCREEN ═══════ */
-        .waiting-card { background: rgba(0,0,0,0.3); border: 1px solid rgba(139,92,246,0.3); border-radius: 14px; padding: 20px; margin: 12px 0; text-align: center; }
+        /* ═══ WAITING ═══ */
+        .waiting-card { background: rgba(0,0,0,0.3); border: 1px solid rgba(139,92,246,0.25); border-radius: 16px; padding: 22px; margin: 12px 0; text-align: center; }
         .waiting-icon { font-size: 2.8rem; animation: pulse 2s infinite; }
-        .waiting-text { color: #94a3b8; margin-top: 8px; }
 
-        /* ═══════ CANVAS ═══════ */
+        /* ═══ CANVAS ═══ */
         #drawing-area {
-            background: white; border-radius: 16px; margin: 15px 0; width: 100%; touch-action: none;
-            box-shadow: inset 0 0 20px rgba(0,0,0,0.08), 0 0 0 3px rgba(255,255,255,0.08);
+            background: white; border-radius: 14px; margin: 12px 0; width: 100%; touch-action: none;
+            box-shadow: 0 0 0 3px rgba(255,255,255,0.06), 0 8px 30px rgba(0,0,0,0.3);
             overflow: hidden; position: relative; cursor: crosshair;
         }
         canvas { display: block; width: 100%; touch-action: none; }
 
-        .tools-bar { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 10px; }
+        .tools-bar { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-bottom: 8px; }
         .tool-btn {
-            width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center;
-            cursor: pointer; transition: 0.2s; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
-            font-size: 1.2rem;
+            width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: 0.15s; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+            font-size: 1.1rem; flex-shrink: 0;
         }
-        .tool-btn.active { background: var(--primary); border-color: var(--primary); transform: translateY(-3px); box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-        .color-dot { width: 22px; height: 22px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.8); pointer-events: none; }
+        .tool-btn.active { background: var(--primary); border-color: var(--primary); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.35); }
+        .color-dot { width: 20px; height: 20px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.6); pointer-events: none; }
 
-        /* ═══════ TIMELINE ═══════ */
-        .turn-card { background: rgba(0,0,0,0.28); border: 1px solid rgba(255,255,255,0.05); border-radius: 16px; padding: 15px; text-align: left; position: relative; margin: 10px 0; }
-        .turn-img { width: 100%; border-radius: 8px; margin-top: 8px; border: 4px solid white; display: block; }
+        /* Color palette grid */
+        #mp-color-palette { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 12px; border: 1px solid rgba(255,255,255,0.07); }
+        #mp-color-palette .tool-btn { width: 34px; height: 34px; border-radius: 8px; }
+
+        /* ═══ TIMELINE ═══ */
+        .turn-card { background: rgba(0,0,0,0.28); border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 14px; text-align: left; position: relative; margin: 10px 0; }
+        .turn-img { width: 100%; border-radius: 10px; margin-top: 8px; border: 3px solid white; display: block; }
         .chain-sep { text-align: center; color: rgba(255,255,255,0.15); font-size: 1.3rem; line-height: 1; padding: 4px 0; }
 
-        /* ═══════ TOAST ═══════ */
+        /* ═══ TOAST ═══ */
         #toast-wrap { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); z-index: 300; display: flex; flex-direction: column-reverse; gap: 7px; align-items: center; pointer-events: none; width: 90%; max-width: 340px; }
-        .toast { background: rgba(10,15,30,0.96); border-radius: 11px; padding: 10px 15px; font-size: 0.82rem; font-weight: 600; display: flex; align-items: center; gap: 9px; box-shadow: 0 4px 20px rgba(0,0,0,0.55); border: 1px solid rgba(255,255,255,0.08); animation: slideUp 0.25s ease; width: 100%; line-height: 1.4; }
+        .toast { background: rgba(10,15,30,0.97); border-radius: 11px; padding: 10px 15px; font-size: 0.82rem; font-weight: 600; display: flex; align-items: center; gap: 9px; box-shadow: 0 6px 24px rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.07); animation: slideUp 0.25s ease; width: 100%; line-height: 1.4; }
         .toast.t-success { border-left: 3px solid var(--success); }
         .toast.t-error { border-left: 3px solid var(--danger); }
         .toast.t-info { border-left: 3px solid var(--primary); }
+        .toast.t-warn { border-left: 3px solid var(--warn); }
         .toast-icon { font-size: 1rem; flex-shrink: 0; }
+
+        /* ═══ MODAL OVERLAY ═══ */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+        .modal-box { background: #1e1b4b; border: 1px solid rgba(255,255,255,0.15); border-radius: 18px; padding: 24px; width: 90%; max-width: 340px; text-align: center; animation: slideUp 0.25s ease; }
+        .modal-box h3 { margin: 0 0 10px 0; font-size: 1.15rem; }
+        .modal-box p { font-size: 0.88rem; margin: 0 0 18px 0; }
+        .modal-actions { display: flex; gap: 10px; }
+        .modal-actions button { margin: 0; }
+
+        /* ═══ TABS ═══ */
+        .tab-row { display: flex; background: rgba(0,0,0,0.25); border-radius: 12px; padding: 3px; margin-bottom: 16px; }
+        .tab-btn { flex: 1; padding: 10px; border-radius: 10px; background: transparent; color: #94a3b8; font-weight: 700; font-size: 0.88rem; border: none; cursor: pointer; margin: 0; box-shadow: none; transition: 0.2s; }
+        .tab-btn.active { background: rgba(139,92,246,0.25); color: white; border: 1px solid rgba(139,92,246,0.4); }
+        .tab-btn:active { top: 0; box-shadow: none; }
+
+        /* ═══ SETTINGS PANEL ═══ */
+        .settings-panel { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 12px; padding: 14px; margin: 10px 0; text-align: left; }
+        .settings-row { display: flex; justify-content: space-between; padding: 5px 0; font-size: 0.83rem; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .settings-row:last-child { border-bottom: none; }
+        .settings-row .key { color: #64748b; }
+        .settings-row .val { color: white; font-weight: 600; }
+
+        /* ═══ LOADING DOTS ═══ */
+        .loading-dots { display: inline-flex; gap: 4px; align-items: center; }
+        .loading-dots span { width: 5px; height: 5px; background: var(--primary); border-radius: 50%; animation: pulse 1.2s infinite; }
+        .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+        .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+        /* ═══ LOCK ICON INPUT ═══ */
+        .input-icon-wrap { position: relative; }
+        .input-icon-wrap input { padding-left: 38px; }
+        .input-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 1rem; pointer-events: none; }
 
         .hidden { display: none !important; }
     </style>
@@ -135,23 +254,24 @@
 <body>
 
 <div id="toast-wrap"></div>
+<div id="modal-root"></div>
 
 <!-- ═══════ MENU ═══════ -->
 <div id="mp-menu-screen" class="screen glass-panel active">
-    <div style="display:flex;justify-content:center;align-items:center;flex-direction:column;gap:8px;margin-bottom:20px;">
-        <div style="font-size:3rem;line-height:1;">🌐</div>
+    <div style="display:flex;justify-content:center;align-items:center;flex-direction:column;gap:10px;margin-bottom:24px;">
+        <div style="font-size:3.2rem;line-height:1;filter:drop-shadow(0 0 20px rgba(139,92,246,0.5));">🌐</div>
         <h1>TSF Multiplayer</h1>
         <p style="margin:0;font-size:0.9rem;">Jogue com amigos em tempo real!</p>
     </div>
-
     <button onclick="startCreateRoom()" class="success-btn" style="margin-bottom:8px;">🎮 CRIAR SALA</button>
-    <button onclick="showJoinScreen()" class="secondary">👥 ENTRAR EM SALA</button>
+    <button onclick="showJoinScreen()" style="margin-bottom:8px;" class="secondary">🔑 ENTRAR COM CÓDIGO</button>
+    <button onclick="showPublicRooms()" class="secondary">🌍 PARTIDAS PÚBLICAS</button>
 </div>
 
 <!-- ═══════ CREATE ROOM ═══════ -->
 <div id="mp-create-screen" class="screen glass-panel">
     <h2>Criar Nova Sala 🎮</h2>
-    
+
     <div class="input-group">
         <label>Seu Nome</label>
         <input type="text" id="mp-host-name" placeholder="Digite seu nome..." maxlength="20">
@@ -169,24 +289,49 @@
 
     <div class="input-group">
         <label>Timer</label>
-        <select id="mp-timer">
+        <select id="mp-timer" onchange="toggleCustomTimer(this.value)">
             <option value="30">⏱️ 30 segundos (Rápido)</option>
             <option value="60" selected>⏱️ 60 segundos</option>
             <option value="90">⏱️ 90 segundos (Confortável)</option>
-            <option value="custom">⏱️ Personalizado</option>
+            <option value="120">⏱️ 120 segundos (Relaxado)</option>
+            <option value="custom">⏱️ Personalizado...</option>
         </select>
-        <input type="number" id="mp-custom-timer" min="10" max="600" value="120" placeholder="Tempo personalizado (s)">
+        <div class="conditional-field" id="custom-timer-field">
+            <input type="number" id="mp-custom-timer" min="10" max="600" value="45" placeholder="Tempo em segundos (10–600)">
+        </div>
     </div>
 
     <div class="input-group">
         <label>Pack de Temas</label>
-        <select id="mp-theme-pack">
+        <select id="mp-theme-pack" onchange="toggleCustomPack(this.value)">
             <option value="mixed">🎲 Misturado</option>
             <option value="memes">🐸 Memes</option>
             <option value="cinema">🎬 Cinema</option>
-            <option value="custom">📝 Personalizado</option>
+            <option value="animais">🐾 Animais</option>
+            <option value="comida">🍕 Comida</option>
+            <option value="custom">📝 Personalizado...</option>
         </select>
-        <textarea id="mp-custom-pack" placeholder="Um tema por linha"></textarea>
+        <div class="conditional-field" id="custom-pack-field">
+            <textarea id="mp-custom-pack" placeholder="Um tema por linha&#10;Ex:&#10;Cachorro astronauta&#10;Gato programador" style="resize:none;height:90px;"></textarea>
+        </div>
+    </div>
+
+    <div class="section-label">OPÇÕES DA SALA</div>
+
+    <div class="input-group">
+        <label>Visibilidade</label>
+        <select id="mp-visibility">
+            <option value="private">🔒 Privada (só com código)</option>
+            <option value="public">🌍 Pública (aparece na lista)</option>
+        </select>
+    </div>
+
+    <div class="input-group">
+        <label>Senha da Sala <span style="color:#475569;font-weight:400;text-transform:none;font-size:0.78rem;">(opcional)</span></label>
+        <div class="input-icon-wrap">
+            <span class="input-icon">🔐</span>
+            <input type="password" id="mp-room-password" placeholder="Deixe vazio para sem senha" maxlength="20">
+        </div>
     </div>
 
     <button onclick="createRoom()" class="success-btn">CRIAR SALA ▶</button>
@@ -196,7 +341,7 @@
 <!-- ═══════ JOIN ROOM ═══════ -->
 <div id="mp-join-screen" class="screen glass-panel">
     <h2>Entrar em Sala 👥</h2>
-    
+
     <div class="input-group">
         <label>Seu Nome</label>
         <input type="text" id="mp-guest-name" placeholder="Digite seu nome..." maxlength="20">
@@ -204,53 +349,105 @@
 
     <div class="input-group">
         <label>Código da Sala (6 caracteres)</label>
-        <input type="text" id="mp-room-code" placeholder="EX: ABC123" maxlength="6" style="text-transform: uppercase;">
+        <input type="text" id="mp-room-code" placeholder="EX: ABC123" maxlength="6" style="text-transform:uppercase;letter-spacing:4px;font-size:1.2rem;font-weight:700;text-align:center;">
+    </div>
+
+    <div class="input-group" id="join-password-group">
+        <label>Senha da Sala <span style="color:#475569;font-weight:400;text-transform:none;font-size:0.78rem;">(se houver)</span></label>
+        <div class="input-icon-wrap">
+            <span class="input-icon">🔐</span>
+            <input type="password" id="mp-join-password" placeholder="Senha (se necessário)" maxlength="20">
+        </div>
     </div>
 
     <button onclick="joinRoom()" class="success-btn">ENTRAR ▶</button>
     <button onclick="backToMenu()" class="secondary">VOLTAR</button>
 </div>
 
+<!-- ═══════ PUBLIC ROOMS ═══════ -->
+<div id="mp-public-screen" class="screen glass-panel">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <h2 style="margin:0;">🌍 Partidas Públicas</h2>
+        <button onclick="loadPublicRooms()" class="icon-btn secondary">🔄 Atualizar</button>
+    </div>
+
+    <div class="input-group">
+        <label>Seu Nome</label>
+        <input type="text" id="mp-public-name" placeholder="Digite seu nome..." maxlength="20">
+    </div>
+
+    <div id="mp-public-rooms-list" style="max-height:320px;overflow-y:auto;">
+        <div style="text-align:center;padding:30px;color:#475569;">
+            <div class="loading-dots"><span></span><span></span><span></span></div>
+            <div style="margin-top:8px;font-size:0.85rem;">Buscando salas...</div>
+        </div>
+    </div>
+
+    <!-- Password modal for public room entry -->
+    <div id="public-pw-prompt" class="hidden" style="background:rgba(0,0,0,0.3);border-radius:12px;padding:14px;margin:10px 0;text-align:left;">
+        <label>🔐 Essa sala tem senha</label>
+        <input type="password" id="mp-public-join-password" placeholder="Digite a senha...">
+        <button onclick="confirmPublicJoin()" class="success-btn" style="margin-top:8px;">ENTRAR</button>
+    </div>
+
+    <button onclick="backToMenu()" class="secondary" style="margin-top:14px;">VOLTAR</button>
+</div>
+
 <!-- ═══════ LOBBY ═══════ -->
 <div id="mp-lobby-screen" class="screen glass-panel">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
         <h2 style="margin:0;">Lobby</h2>
-        <button onclick="copyRoomCode()" class="tool-btn" style="width:auto;padding:0 10px;box-shadow:none;background:rgba(139,92,246,0.15);border:1px solid rgba(139,92,246,0.3);color:var(--primary);height:36px;font-weight:700;font-size:0.75rem;margin-top:0;">📋 COPIAR CÓDIGO</button>
+        <button onclick="copyRoomCode()" class="icon-btn" style="background:rgba(139,92,246,0.15);border:1px solid rgba(139,92,246,0.3);color:var(--primary);">📋 COPIAR</button>
     </div>
 
     <div class="code-display">
         <div class="code-hint">Compartilhe este código com amigos</div>
         <div class="code-text" id="mp-lobby-code">—</div>
+        <div id="mp-lobby-pw-badge" class="hidden" style="margin-top:4px;font-size:0.75rem;color:var(--gold);">🔐 Sala com senha</div>
+        <div id="mp-lobby-public-badge" class="hidden" style="margin-top:4px;font-size:0.75rem;color:var(--success);">🌍 Sala pública</div>
     </div>
 
-    <div style="margin: 16px 0;">
-        <label style="text-transform: uppercase; font-size:0.7rem; letter-spacing:1px; color:#64748b;">Jogadores (<span id="mp-player-count">0</span>)</label>
-        <div id="mp-players-list" style="max-height: 300px; overflow-y: auto;">—</div>
+    <div style="margin:14px 0;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <label style="margin:0;font-size:0.7rem;letter-spacing:1px;color:#64748b;">JOGADORES (<span id="mp-player-count">0</span>)</label>
+        </div>
+        <div id="mp-players-list" style="max-height:240px;overflow-y:auto;">—</div>
     </div>
 
-    <div id="mp-settings-group" style="margin: 12px 0; padding: 12px; background: rgba(255,255,255,0.04); border-radius: 10px; display:none;">
-        <label style="font-size:0.75rem; text-transform:uppercase; letter-spacing:1px;">⚙️ Configurações da Sala (Host)</label>
-        <div style="margin-top: 8px; font-size:0.82rem; color:#94a3b8;">
-            <div>Modo: <strong id="mp-settings-mode">—</strong></div>
-            <div>Timer: <strong id="mp-settings-timer">—</strong>s</div>
-            <div>Pack: <strong id="mp-settings-pack">—</strong></div>
+    <div id="mp-settings-group" class="settings-panel" style="display:none;">
+        <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin-bottom:8px;">⚙️ Configurações da Sala</div>
+        <div class="settings-row"><span class="key">Modo</span><span class="val" id="mp-settings-mode">—</span></div>
+        <div class="settings-row"><span class="key">Timer</span><span class="val" id="mp-settings-timer">—</span></div>
+        <div class="settings-row"><span class="key">Pack</span><span class="val" id="mp-settings-pack">—</span></div>
+        <div class="settings-row"><span class="key">Visibilidade</span><span class="val" id="mp-settings-visibility">—</span></div>
+    </div>
+
+    <!-- Lobby Chat -->
+    <div class="section-label">CHAT DO LOBBY</div>
+    <div class="chat-section">
+        <div class="chat-box" id="lobby-chat-box">
+            <div class="chat-msg system-msg">💬 Bem-vindo ao lobby! Converse com os jogadores antes da partida.</div>
+        </div>
+        <div class="chat-input-row">
+            <input type="text" id="lobby-chat-input" placeholder="Mensagem..." maxlength="80" onkeydown="if(event.key==='Enter')sendLobbyChat()">
+            <button onclick="sendLobbyChat()" class="success-btn">➤</button>
         </div>
     </div>
 
-    <button id="mp-start-btn" onclick="startGame()" class="success-btn" style="display:none;">▶ INICIAR PARTIDA</button>
-    <button id="mp-wait-btn" class="secondary" style="display:none;cursor:default;opacity:0.6;">⏳ Aguardando host iniciar...</button>
+    <button id="mp-start-btn" onclick="startGame()" class="success-btn" style="display:none;margin-top:14px;">▶ INICIAR PARTIDA</button>
+    <button id="mp-wait-btn" class="secondary" style="display:none;cursor:default;opacity:0.6;margin-top:14px;">⏳ Aguardando host iniciar...</button>
     <button onclick="leaveRoom()" class="danger">SAIR DA SALA</button>
 </div>
 
 <!-- ═══════ THEMES ═══════ -->
 <div id="mp-themes-screen" class="screen glass-panel">
     <h2>⏱️ Defina seu Tema Secreto</h2>
-    <p style="font-size:0.85rem;">Todos digitam ao mesmo tempo. Ninguém vê os temas dos outros!</p>
+    <p style="font-size:0.85rem;margin-bottom:14px;">Todos digitam ao mesmo tempo. Ninguém vê os temas dos outros!</p>
 
     <div class="theme-progress" id="mp-theme-progress"></div>
 
-    <div style="background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.3);border-radius:10px;padding:12px;margin-bottom:12px;text-align:left;">
-        <div style="font-size:0.75rem;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Tempo restante</div>
+    <div style="background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.25);border-radius:12px;padding:12px;margin-bottom:14px;text-align:left;">
+        <div style="font-size:0.72rem;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;">Tempo restante</div>
         <div class="timer-bar-wrap"><div class="timer-fill" id="mp-theme-timer-fill" style="width:100%;"></div></div>
         <div style="display:flex;justify-content:space-between;align-items:center;">
             <span style="font-size:0.9rem;font-weight:700;color:#94a3b8;"><span id="mp-theme-timer">60</span>s</span>
@@ -260,7 +457,7 @@
 
     <div class="input-group">
         <label>Seu Tema Secreto 🤫</label>
-        <textarea id="mp-theme-input" placeholder="Ex: Cachorro astronauta, Gato programador..." maxlength="60" style="resize:none;height:60px;" onkeydown="if(event.key==='Enter')submitTheme()"></textarea>
+        <textarea id="mp-theme-input" placeholder="Ex: Cachorro astronauta, Gato programador..." maxlength="60" style="resize:none;height:60px;" onkeydown="if(event.key==='Enter'){event.preventDefault();submitTheme();}"></textarea>
     </div>
 
     <button id="mp-theme-submit" onclick="submitTheme()" class="success-btn">ENVIAR TEMA ✓</button>
@@ -269,48 +466,46 @@
 
 <!-- ═══════ TURN ═══════ -->
 <div id="mp-turn-screen" class="screen glass-panel">
-    <div style="display:flex;justify-content:space-between;align-items:center;width:100%;margin-bottom:10px;">
-        <span style="font-size:0.78rem;opacity:0.55;text-transform:uppercase;letter-spacing:1px;" id="mp-turn-label">Desenhe</span>
+    <div style="display:flex;justify-content:space-between;align-items:center;width:100%;margin-bottom:8px;">
+        <span style="font-size:0.75rem;opacity:0.5;text-transform:uppercase;letter-spacing:1px;" id="mp-turn-label">Desenhe</span>
         <span id="mp-turn-timer" style="color:var(--gold);font-size:1.15rem;font-weight:800;">60s</span>
     </div>
     <div class="timer-bar-wrap"><div class="timer-fill" id="mp-turn-bar"></div></div>
-
-    <h3 id="mp-turn-prompt" style="color:white;margin:2px 0 14px 0;font-size:1.15rem;line-height:1.4;">...</h3>
+    <h3 id="mp-turn-prompt" style="color:white;margin:2px 0 12px 0;font-size:1.1rem;line-height:1.45;">...</h3>
 
     <!-- Draw tools -->
     <div id="mp-draw-tools" style="display:none;">
         <div class="tools-bar" id="mp-size-bar">
             <div class="tool-btn size-btn" onclick="mpSetSize(3,this)" title="Fino"><div style="width:4px;height:4px;background:white;border-radius:50%;"></div></div>
-            <div class="tool-btn size-btn active" onclick="mpSetSize(8,this)" title="Médio"><div style="width:9px;height:9px;background:white;border-radius:50%;"></div></div>
-            <div class="tool-btn size-btn" onclick="mpSetSize(22,this)" title="Grosso"><div style="width:18px;height:18px;background:white;border-radius:50%;"></div></div>
-            <div style="width:8px;"></div>
-            <div class="tool-btn" onclick="mpSetTool('eraser',null,this)">🧽</div>
-            <button class="tool-btn" style="width:auto;padding:0 10px;font-size:0.8rem;box-shadow:none;margin:0;" onclick="mpUndo()">↩️</button>
-            <button class="tool-btn" style="width:auto;border-color:var(--danger);box-shadow:none;margin:0;" onclick="mpResetCanvas()">🗑️</button>
+            <div class="tool-btn size-btn active" onclick="mpSetSize(7,this)" title="Médio"><div style="width:8px;height:8px;background:white;border-radius:50%;"></div></div>
+            <div class="tool-btn size-btn" onclick="mpSetSize(16,this)" title="Grosso"><div style="width:15px;height:15px;background:white;border-radius:50%;"></div></div>
+            <div class="tool-btn size-btn" onclick="mpSetSize(30,this)" title="Extra Grosso"><div style="width:22px;height:22px;background:white;border-radius:50%;"></div></div>
+            <div style="width:6px;"></div>
+            <div class="tool-btn" onclick="mpSetTool('eraser',null,this)" title="Borracha">🧽</div>
+            <button class="tool-btn" style="width:auto;padding:0 10px;font-size:0.78rem;box-shadow:none;margin:0;" onclick="mpUndo()">↩️</button>
+            <button class="tool-btn" style="width:auto;padding:0 8px;border-color:var(--danger);box-shadow:none;margin:0;" onclick="mpResetCanvas()">🗑️</button>
         </div>
-        <div class="tools-bar" id="mp-color-palette"></div><input type="color" id="mp-color-picker">
-        <div id="drawing-area"><canvas id="mp-canvas" width="350" height="350"></canvas></div>
+        <div class="tools-bar" id="mp-color-palette"></div>
+        <div id="drawing-area"><canvas id="mp-canvas" width="420" height="420"></canvas></div>
     </div>
 
     <!-- Guess input -->
     <div id="mp-guess-tools" style="display:none;">
-        <div style="background:white;padding:10px;border-radius:12px;margin:10px 0;">
+        <div style="background:white;padding:8px;border-radius:12px;margin:10px 0;">
             <img id="mp-img-guess" style="width:100%;border-radius:8px;display:block;">
         </div>
-        <input type="text" id="mp-guess-input" placeholder="Descreva aqui..." autocomplete="off" onkeydown="if(event.key==='Enter')mpSubmitGuess()">
+        <input type="text" id="mp-guess-input" placeholder="Descreva o que você vê..." autocomplete="off" onkeydown="if(event.key==='Enter')mpSubmitGuess()">
     </div>
 
-    <button id="mp-submit-btn" onclick="mpSubmitDraw()" class="success-btn" style="display:none;margin-top:8px;">ENVIAR ✓</button>
-    <button id="mp-guess-submit" onclick="mpSubmitGuess()" class="success-btn" style="display:none;margin-top:8px;">ENVIAR ✓</button>
+    <button id="mp-submit-btn" onclick="mpSubmitDraw()" class="success-btn" style="display:none;margin-top:10px;">ENVIAR DESENHO ✓</button>
+    <button id="mp-guess-submit" onclick="mpSubmitGuess()" class="success-btn" style="display:none;margin-top:10px;">ENVIAR DESCRIÇÃO ✓</button>
 </div>
 
 <!-- ═══════ RESULTS ═══════ -->
 <div id="mp-results-screen" class="screen glass-panel">
     <h1>🏆 Resultado Final</h1>
     <p>Veja como suas cadeias evoluíram!</p>
-
     <div id="mp-results-chains" style="margin-top:16px;"></div>
-
     <button onclick="backToMenu()" class="success-btn" style="margin-top:20px;">🏠 MENU PRINCIPAL</button>
 </div>
 
@@ -319,17 +514,14 @@
     <div class="waiting-card">
         <div class="waiting-icon">⏳</div>
         <h2 style="margin:12px 0 0 0;">Aguardando...</h2>
-        <div class="waiting-text" id="mp-waiting-text">Próximo jogador está na sua vez</div>
+        <div style="color:#94a3b8;margin-top:8px;" id="mp-waiting-text">Próximo jogador está na sua vez</div>
     </div>
-    <button id="mp-waiting-skip" onclick="leaveRoom()" class="danger">SAIR</button>
+    <button onclick="leaveRoom()" class="danger">SAIR</button>
 </div>
 
 <script type="module">
-    // ════════════════════════════════════════════
-    //  FIREBASE SETUP
-    // ════════════════════════════════════════════
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import { getDatabase, ref, set, get, onValue, remove, update, off } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
+    import { getDatabase, ref, set, get, onValue, remove, update, off, push } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyCNqmV3VRmKyyNGamAq3ky4r9ih701p2bw",
@@ -348,7 +540,6 @@
     //  STATE
     // ════════════════════════════════════════════
     let mpState = {
-        mode: 'online',
         myUID: 'user_' + Math.random().toString(36).substr(2, 9),
         myName: '',
         isHost: false,
@@ -356,14 +547,20 @@
         players: [],
         currentRound: 0,
         currentChainIdx: 0,
-        gameStatus: 'menu', // menu, lobby, themes, playing, results, waiting
+        gameStatus: 'menu',
         timerInterval: null,
         timerMax: 60,
         timerNow: 60,
         undoStack: [],
-        usedColors: new Set(),
-        listeners: {}, // store Firebase listeners para cleanup
+        listeners: {},
+        pendingPublicJoin: null,
+        bannedList: [],
     };
+
+    // Player avatar colors
+    const AVATAR_COLORS = ['#8B5CF6','#EC4899','#22c55e','#f97316','#38bdf8','#F59E0B','#e11d48','#6366f1'];
+    const getAvatarColor = (uid) => AVATAR_COLORS[Math.abs(uid.split('').reduce((a,c)=>a+c.charCodeAt(0),0)) % AVATAR_COLORS.length];
+    const getInitial = (name) => name ? name[0].toUpperCase() : '?';
 
     const $ = id => document.getElementById(id);
 
@@ -371,7 +568,8 @@
     //  HELPERS
     // ════════════════════════════════════════════
     function generateRoomCode() {
-        return Math.random().toString(36).substr(2, 6).toUpperCase();
+        const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+        return Array.from({length:6}, () => chars[Math.floor(Math.random()*chars.length)]).join('');
     }
 
     function showScreen(id) {
@@ -385,46 +583,150 @@
         const el = document.createElement('div');
         el.className = `toast t-${type}`;
         const icons = { success: '✅', error: '❌', info: 'ℹ️', warn: '⚠️' };
-        el.innerHTML = `<span class="toast-icon">${icons[type] || '•'}</span><span>${msg}</span>`;
+        el.innerHTML = `<span class="toast-icon">${icons[type]||'•'}</span><span>${msg}</span>`;
         wrap.prepend(el);
-        setTimeout(() => el.remove(), 3200);
+        setTimeout(() => el.remove(), 3500);
     }
+
+    function showModal(title, text, actions) {
+        const root = $('modal-root');
+        root.innerHTML = `
+            <div class="modal-overlay" id="modal-overlay">
+                <div class="modal-box">
+                    <h3>${title}</h3>
+                    <p>${text}</p>
+                    <div class="modal-actions">
+                        ${actions.map((a,i) => `<button onclick="window.__modalAction(${i})" class="${a.cls||''}">${a.label}</button>`).join('')}
+                    </div>
+                </div>
+            </div>`;
+        window.__modalAction = (i) => {
+            root.innerHTML = '';
+            delete window.__modalAction;
+            if (actions[i].fn) actions[i].fn();
+        };
+    }
+
+    function closeModal() {
+        $('modal-root').innerHTML = '';
+    }
+
+    // ════════════════════════════════════════════
+    //  UI TOGGLES
+    // ════════════════════════════════════════════
+    window.toggleCustomTimer = function(v) {
+        const f = $('custom-timer-field');
+        if (v === 'custom') f.classList.add('visible');
+        else f.classList.remove('visible');
+    };
+
+    window.toggleCustomPack = function(v) {
+        const f = $('custom-pack-field');
+        if (v === 'custom') f.classList.add('visible');
+        else f.classList.remove('visible');
+    };
 
     // ════════════════════════════════════════════
     //  MENU FLOW
     // ════════════════════════════════════════════
-    function backToMenu() {
+    window.backToMenu = function() {
         mpState.gameStatus = 'menu';
         showScreen('mp-menu-screen');
-    }
+    };
 
-    function startCreateRoom() {
+    window.startCreateRoom = function() {
         showScreen('mp-create-screen');
         $('mp-host-name').focus();
-    }
+    };
 
-    function showJoinScreen() {
+    window.showJoinScreen = function() {
         showScreen('mp-join-screen');
         $('mp-guest-name').focus();
-    }
+    };
+
+    // ════════════════════════════════════════════
+    //  PUBLIC ROOMS
+    // ════════════════════════════════════════════
+    window.showPublicRooms = async function() {
+        showScreen('mp-public-screen');
+        await loadPublicRooms();
+    };
+
+    window.loadPublicRooms = async function() {
+        const listEl = $('mp-public-rooms-list');
+        listEl.innerHTML = `<div style="text-align:center;padding:24px;color:#475569;"><div class="loading-dots"><span></span><span></span><span></span></div><div style="margin-top:8px;font-size:0.85rem;">Buscando salas...</div></div>`;
+
+        try {
+            const snap = await get(ref(db, 'rooms'));
+            const rooms = snap.val() || {};
+            const publicRooms = Object.entries(rooms).filter(([,r]) =>
+                r.meta && r.meta.visibility === 'public' && r.meta.status === 'lobby'
+            );
+
+            if (publicRooms.length === 0) {
+                listEl.innerHTML = `<div style="text-align:center;padding:30px;color:#475569;font-size:0.88rem;">Nenhuma partida pública disponível no momento.<br><br>Crie uma sala pública para jogar!</div>`;
+                return;
+            }
+
+            listEl.innerHTML = publicRooms.map(([code, room]) => {
+                const playerCount = room.players ? Object.keys(room.players).length : 0;
+                const hasPassword = !!room.meta.hasPassword;
+                const modeLabel = {classic:'✏️ Clássico',copy:'🖼️ Artistas Copiados',dupla:'🎭 Dupla Jornada',caos:'🌀 Caos Criativo'}[room.meta.mode] || room.meta.mode;
+                return `<div class="public-room-card" onclick="joinPublicRoom('${code}', ${hasPassword})">
+                    <div class="room-info">
+                        <div class="room-name">${code} ${hasPassword ? '<span class="room-locked">🔐</span>' : ''}</div>
+                        <div class="room-meta">${modeLabel} · Timer: ${room.meta.timer}s</div>
+                    </div>
+                    <div class="room-players-badge">👥 ${playerCount}</div>
+                </div>`;
+            }).join('');
+        } catch(e) {
+            listEl.innerHTML = `<div style="text-align:center;padding:24px;color:var(--danger);font-size:0.85rem;">Erro ao carregar salas.</div>`;
+        }
+    };
+
+    window.joinPublicRoom = function(code, hasPassword) {
+        const name = $('mp-public-name').value.trim();
+        if (!name) { showToast('Digite seu nome primeiro!', 'warn'); $('mp-public-name').focus(); return; }
+
+        mpState.pendingPublicJoin = code;
+        if (hasPassword) {
+            $('public-pw-prompt').classList.remove('hidden');
+            $('mp-public-join-password').focus();
+        } else {
+            doJoinRoom(name, code, '');
+        }
+    };
+
+    window.confirmPublicJoin = function() {
+        const name = $('mp-public-name').value.trim();
+        const pw = $('mp-public-join-password').value;
+        doJoinRoom(name, mpState.pendingPublicJoin, pw);
+        $('public-pw-prompt').classList.add('hidden');
+    };
 
     // ════════════════════════════════════════════
     //  CREATE ROOM
     // ════════════════════════════════════════════
-    async function createRoom() {
+    window.createRoom = async function() {
         const name = $('mp-host-name').value.trim();
         if (!name) { showToast('Digite seu nome!', 'warn'); return; }
+
+        const timerVal = $('mp-timer').value;
+        const timer = timerVal === 'custom'
+            ? Math.max(10, Math.min(600, parseInt($('mp-custom-timer').value) || 60))
+            : parseInt(timerVal);
+
+        const pack = $('mp-theme-pack').value;
+        const mode = $('mp-mode').value;
+        const visibility = $('mp-visibility').value;
+        const password = $('mp-room-password').value.trim();
 
         mpState.myName = name;
         mpState.isHost = true;
         mpState.roomCode = generateRoomCode();
         mpState.gameStatus = 'lobby';
 
-        const mode = $('mp-mode').value;
-        const timer = parseInt($('mp-timer').value);
-        const pack = $('mp-theme-pack').value;
-
-        // Criar sala no Firebase
         try {
             await set(ref(db, `rooms/${mpState.roomCode}`), {
                 meta: {
@@ -432,11 +734,15 @@
                     status: 'lobby',
                     createdAt: Date.now(),
                     mode, timer, pack,
+                    visibility,
+                    hasPassword: !!password,
+                    password: password || null,
                     playerCount: 1,
                 },
                 players: {
                     [mpState.myUID]: {
-                        name, online: true, isHost: true, joinedAt: Date.now()
+                        name, online: true, isHost: true,
+                        joinedAt: Date.now(), status: 'online', uid: mpState.myUID
                     }
                 }
             });
@@ -446,24 +752,40 @@
         } catch (e) {
             showToast('Erro ao criar sala: ' + e.message, 'error');
         }
-    }
+    };
 
     // ════════════════════════════════════════════
     //  JOIN ROOM
     // ════════════════════════════════════════════
-    async function joinRoom() {
+    window.joinRoom = async function() {
         const name = $('mp-guest-name').value.trim();
         const code = $('mp-room-code').value.toUpperCase().trim();
-
+        const password = $('mp-join-password').value;
         if (!name) { showToast('Digite seu nome!', 'warn'); return; }
         if (!code || code.length !== 6) { showToast('Código inválido (6 caracteres)!', 'warn'); return; }
+        await doJoinRoom(name, code, password);
+    };
 
+    async function doJoinRoom(name, code, password) {
         try {
-            // Verificar se sala existe
             const snap = await get(ref(db, `rooms/${code}`));
-            if (!snap.exists()) {
-                showToast('Sala não encontrada!', 'error');
-                return;
+            if (!snap.exists()) { showToast('Sala não encontrada!', 'error'); return; }
+
+            const roomData = snap.val();
+
+            // Check banned
+            if (roomData.banned && roomData.banned[mpState.myUID]) {
+                showToast('Você foi banido desta sala!', 'error'); return;
+            }
+
+            // Check password
+            if (roomData.meta.hasPassword && roomData.meta.password !== password) {
+                showToast('Senha incorreta!', 'error'); return;
+            }
+
+            // Check lobby status
+            if (roomData.meta.status !== 'lobby') {
+                showToast('A partida já começou!', 'warn'); return;
             }
 
             mpState.myName = name;
@@ -471,9 +793,9 @@
             mpState.isHost = false;
             mpState.gameStatus = 'lobby';
 
-            // Adicionar player à sala
             await set(ref(db, `rooms/${code}/players/${mpState.myUID}`), {
-                name, online: true, isHost: false, joinedAt: Date.now()
+                name, online: true, isHost: false,
+                joinedAt: Date.now(), status: 'online', uid: mpState.myUID
             });
 
             showToast(`Entrou na sala ${code}!`, 'success');
@@ -486,15 +808,19 @@
     // ════════════════════════════════════════════
     //  LOBBY
     // ════════════════════════════════════════════
-    function showLobby() {
+    window.showLobby = function() {
         showScreen('mp-lobby-screen');
         $('mp-lobby-code').innerText = mpState.roomCode;
         listenToLobby();
-    }
+
+        // Setup heartbeat for online status
+        setupHeartbeat();
+    };
 
     function listenToLobby() {
         const playersRef = ref(db, `rooms/${mpState.roomCode}/players`);
         const metaRef = ref(db, `rooms/${mpState.roomCode}/meta`);
+        const chatRef = ref(db, `rooms/${mpState.roomCode}/chat`);
 
         const playersListener = onValue(playersRef, snap => {
             const players = snap.val() || {};
@@ -504,12 +830,20 @@
 
         const metaListener = onValue(metaRef, snap => {
             const meta = snap.val() || {};
-            $('mp-settings-mode').innerText = meta.mode || '—';
-            $('mp-settings-timer').innerText = meta.timer || '—';
+            $('mp-settings-mode').innerText = {classic:'✏️ Clássico',copy:'🖼️ Artistas Copiados',dupla:'🎭 Dupla Jornada',caos:'🌀 Caos Criativo'}[meta.mode] || meta.mode || '—';
+            $('mp-settings-timer').innerText = (meta.timer || '—') + 's';
             $('mp-settings-pack').innerText = meta.pack || '—';
+            $('mp-settings-visibility').innerText = meta.visibility === 'public' ? '🌍 Pública' : '🔒 Privada';
+            $('mp-settings-group').style.display = '';
+
+            if (meta.hasPassword) $('mp-lobby-pw-badge').classList.remove('hidden');
+            if (meta.visibility === 'public') $('mp-lobby-public-badge').classList.remove('hidden');
+
+            if (meta.status === 'themes') {
+                showThemeScreen();
+            }
 
             if (mpState.isHost) {
-                $('mp-settings-group').style.display = '';
                 $('mp-start-btn').style.display = mpState.players.length >= 2 ? '' : 'none';
                 $('mp-wait-btn').style.display = 'none';
             } else {
@@ -518,70 +852,206 @@
             }
         });
 
-        mpState.listeners.lobby = { playersListener, metaListener };
+        const chatListener = onValue(chatRef, snap => {
+            const msgs = snap.val() || {};
+            const box = $('lobby-chat-box');
+            const sorted = Object.values(msgs).sort((a,b) => a.ts - b.ts);
+            const lastCount = parseInt(box.dataset.count || '0');
+            if (sorted.length > lastCount) {
+                box.dataset.count = sorted.length;
+                // Re-render only new messages
+                const existingIds = new Set([...box.querySelectorAll('[data-msgid]')].map(el => el.dataset.msgid));
+                sorted.forEach(m => {
+                    if (!existingIds.has(m.id)) {
+                        const div = document.createElement('div');
+                        const isOwn = m.uid === mpState.myUID;
+                        const isHost = m.isHost;
+                        div.className = `chat-msg${isOwn?' own-msg':''}${isHost?' host-msg':''}`;
+                        div.dataset.msgid = m.id;
+                        div.innerHTML = `<span class="chat-sender">${m.name}${isHost?' 👑':''}</span>${escapeHtml(m.text)}`;
+                        box.appendChild(div);
+                    }
+                });
+                box.scrollTop = box.scrollHeight;
+            }
+        });
+
+        mpState.listeners.lobby = { playersListener, metaListener, chatListener };
     }
+
+    function escapeHtml(t) {
+        return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    window.sendLobbyChat = async function() {
+        const input = $('lobby-chat-input');
+        const text = input.value.trim();
+        if (!text) return;
+        input.value = '';
+
+        const msgId = 'msg_' + Date.now() + '_' + Math.random().toString(36).substr(2,4);
+        try {
+            await set(ref(db, `rooms/${mpState.roomCode}/chat/${msgId}`), {
+                id: msgId, uid: mpState.myUID, name: mpState.myName,
+                text, ts: Date.now(), isHost: mpState.isHost
+            });
+        } catch(e) {}
+    };
 
     function renderPlayersList() {
         const list = $('mp-players-list');
         $('mp-player-count').innerText = mpState.players.length;
 
-        list.innerHTML = mpState.players.map(p => `
-            <div class="player-card">
-                <div>
-                    <div class="player-name">${p.name}</div>
-                    <div class="player-status online">● Online</div>
+        list.innerHTML = mpState.players.map(p => {
+            const status = p.status || 'online';
+            const statusDot = `<span class="status-dot ${status}"></span>`;
+            const statusLabel = status === 'online' ? '🟢 Online' : status === 'reconnecting' ? '🟡 Reconectando' : '🔴 Offline';
+            const avatarColor = getAvatarColor(p.uid);
+            const initial = getInitial(p.name);
+
+            const hostActions = mpState.isHost && p.uid !== mpState.myUID ? `
+                <div class="host-actions">
+                    <button class="host-action-btn kick" onclick="kickPlayer('${p.uid}','${escapeHtml(p.name)}')" title="Expulsar (pode voltar)">⚡</button>
+                    <button class="host-action-btn ban" onclick="banPlayer('${p.uid}','${escapeHtml(p.name)}')" title="Banir (permanente)">🚫</button>
+                </div>` : '';
+
+            return `<div class="player-card${status==='offline'?' offline':''}">
+                <div class="player-info">
+                    <div class="player-avatar" style="background:${avatarColor}22;color:${avatarColor};border:1px solid ${avatarColor}44;">${initial}</div>
+                    <div>
+                        <div class="player-name">${escapeHtml(p.name)}</div>
+                        <div class="player-status-text" style="color:${status==='online'?'var(--success)':status==='reconnecting'?'var(--gold)':'var(--danger)'}">${statusLabel}</div>
+                    </div>
                 </div>
-                <div>${p.isHost ? '<span class="badge-host">HOST</span>' : ''}</div>
-            </div>
-        `).join('');
+                <div class="player-badges">
+                    ${p.isHost ? '<span class="badge-host">HOST</span>' : ''}
+                    ${hostActions}
+                </div>
+            </div>`;
+        }).join('');
     }
 
-    function copyRoomCode() {
-        navigator.clipboard.writeText(mpState.roomCode);
+    // ════════════════════════════════════════════
+    //  HEARTBEAT / PRESENCE
+    // ════════════════════════════════════════════
+    function setupHeartbeat() {
+        if (mpState._heartbeatInterval) clearInterval(mpState._heartbeatInterval);
+        const updatePresence = (status) => {
+            const playerRef = ref(db, `rooms/${mpState.roomCode}/players/${mpState.myUID}`);
+            update(playerRef, { status, lastSeen: Date.now() }).catch(()=>{});
+        };
+
+        updatePresence('online');
+        mpState._heartbeatInterval = setInterval(() => updatePresence('online'), 8000);
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                updatePresence('reconnecting');
+            } else {
+                updatePresence('online');
+            }
+        });
+    }
+
+    // ════════════════════════════════════════════
+    //  HOST MODERATION
+    // ════════════════════════════════════════════
+    window.kickPlayer = function(uid, name) {
+        showModal('Expulsar Jogador', `Deseja expulsar <strong>${name}</strong>? Ele poderá entrar novamente.`, [
+            { label: '⚡ Expulsar', cls: 'danger', fn: async () => {
+                try {
+                    // Remove player; they'll see they got removed and be sent back
+                    await remove(ref(db, `rooms/${mpState.roomCode}/players/${uid}`));
+                    // Notify via special node
+                    await set(ref(db, `rooms/${mpState.roomCode}/kicked/${uid}`), {
+                        ts: Date.now(), type: 'kick'
+                    });
+                    showToast(`${name} foi expulso.`, 'warn');
+                } catch(e) { showToast('Erro ao expulsar.', 'error'); }
+            }},
+            { label: 'Cancelar', cls: 'secondary', fn: null }
+        ]);
+    };
+
+    window.banPlayer = function(uid, name) {
+        showModal('Banir Jogador', `Deseja banir <strong>${name}</strong> permanentemente desta sala?`, [
+            { label: '🚫 Banir', cls: 'danger', fn: async () => {
+                try {
+                    await remove(ref(db, `rooms/${mpState.roomCode}/players/${uid}`));
+                    await set(ref(db, `rooms/${mpState.roomCode}/banned/${uid}`), {
+                        ts: Date.now(), name
+                    });
+                    await set(ref(db, `rooms/${mpState.roomCode}/kicked/${uid}`), {
+                        ts: Date.now(), type: 'ban'
+                    });
+                    showToast(`${name} foi banido.`, 'error');
+                } catch(e) { showToast('Erro ao banir.', 'error'); }
+            }},
+            { label: 'Cancelar', cls: 'secondary', fn: null }
+        ]);
+    };
+
+    // Listen for being kicked/banned
+    function listenForKick() {
+        const kickRef = ref(db, `rooms/${mpState.roomCode}/kicked/${mpState.myUID}`);
+        onValue(kickRef, snap => {
+            if (snap.exists()) {
+                const d = snap.val();
+                if (d.type === 'ban') {
+                    showToast('Você foi banido desta sala!', 'error');
+                } else {
+                    showToast('Você foi expulso pelo host.', 'warn');
+                }
+                cleanupListeners();
+                mpState.gameStatus = 'menu';
+                showScreen('mp-menu-screen');
+            }
+        });
+    }
+
+    window.copyRoomCode = function() {
+        navigator.clipboard.writeText(mpState.roomCode).catch(()=>{});
         showToast(`Código ${mpState.roomCode} copiado!`, 'success');
-    }
+    };
 
-    async function startGame() {
+    window.startGame = async function() {
         if (!mpState.isHost) return;
-        if (mpState.players.length < 2) {
-            showToast('Mínimo 2 jogadores!', 'warn');
-            return;
-        }
-
+        if (mpState.players.length < 2) { showToast('Mínimo 2 jogadores!', 'warn'); return; }
         try {
             await update(ref(db, `rooms/${mpState.roomCode}/meta`), { status: 'themes' });
             showThemeScreen();
-        } catch (e) {
-            showToast('Erro ao iniciar: ' + e.message, 'error');
-        }
-    }
+        } catch (e) { showToast('Erro ao iniciar: ' + e.message, 'error'); }
+    };
 
-    async function leaveRoom() {
+    window.leaveRoom = async function() {
+        if (mpState._heartbeatInterval) clearInterval(mpState._heartbeatInterval);
         try {
             const playerRef = ref(db, `rooms/${mpState.roomCode}/players/${mpState.myUID}`);
             await remove(playerRef);
-
-            // Se era host, deletar sala
-            if (mpState.isHost) {
-                const roomRef = ref(db, `rooms/${mpState.roomCode}`);
-                await remove(roomRef);
-            }
-
-            cleanupListeners();
-            mpState.gameStatus = 'menu';
-            backToMenu();
-            showToast('Você saiu da sala.', 'info');
-        } catch (e) {
-            showToast('Erro ao sair: ' + e.message, 'error');
-        }
-    }
+            if (mpState.isHost) await remove(ref(db, `rooms/${mpState.roomCode}`));
+        } catch (e) {}
+        cleanupListeners();
+        mpState.gameStatus = 'menu';
+        backToMenu();
+        showToast('Você saiu da sala.', 'info');
+    };
 
     function cleanupListeners() {
-        Object.values(mpState.listeners).forEach(listener => {
-            if (listener.playersListener) off(ref(db, `rooms/${mpState.roomCode}/players`), 'value', listener.playersListener);
-            if (listener.metaListener) off(ref(db, `rooms/${mpState.roomCode}/meta`), 'value', listener.metaListener);
-            if (listener.themesListener) off(ref(db, `rooms/${mpState.roomCode}/themes`), 'value', listener.themesListener);
-        });
+        try {
+            const lob = mpState.listeners.lobby;
+            if (lob) {
+                if (lob.playersListener) off(ref(db, `rooms/${mpState.roomCode}/players`), 'value', lob.playersListener);
+                if (lob.metaListener) off(ref(db, `rooms/${mpState.roomCode}/meta`), 'value', lob.metaListener);
+                if (lob.chatListener) off(ref(db, `rooms/${mpState.roomCode}/chat`), 'value', lob.chatListener);
+            }
+            const th = mpState.listeners.themes;
+            if (th && th.themesListener) off(ref(db, `rooms/${mpState.roomCode}/themes`), 'value', th.themesListener);
+            const pl = mpState.listeners.playing;
+            if (pl) {
+                if (pl.chainsListener) off(ref(db, `rooms/${mpState.roomCode}/chains`), 'value', pl.chainsListener);
+                if (pl.metaListener) off(ref(db, `rooms/${mpState.roomCode}/meta`), 'value', pl.metaListener);
+            }
+        } catch(e) {}
         mpState.listeners = {};
     }
 
@@ -600,9 +1070,7 @@
     function renderThemeProgress() {
         const progress = $('mp-theme-progress');
         progress.innerHTML = mpState.players.map((p, i) => `
-            <div class="progress-dot ${i === 0 ? 'current' : ''}" id="prog-${p.uid}" title="${p.name}">
-                ${i + 1}
-            </div>
+            <div class="progress-dot ${i === 0 ? 'current' : ''}" id="prog-${p.uid}" title="${escapeHtml(p.name)}">${i + 1}</div>
         `).join('');
     }
 
@@ -610,40 +1078,35 @@
         mpState.timerMax = secs;
         mpState.timerNow = secs;
         clearInterval(mpState.timerInterval);
-
-        const update = () => {
+        const tick = () => {
             const pct = (mpState.timerNow / mpState.timerMax) * 100;
             $('mp-theme-timer-fill').style.width = pct + '%';
+            if (pct <= 20) $('mp-theme-timer-fill').classList.add('danger');
+            else if (pct <= 45) { $('mp-theme-timer-fill').classList.remove('danger'); $('mp-theme-timer-fill').classList.add('warn'); }
+            else $('mp-theme-timer-fill').classList.remove('warn','danger');
             $('mp-theme-timer').innerText = mpState.timerNow;
             mpState.timerNow--;
             if (mpState.timerNow < 0) {
                 clearInterval(mpState.timerInterval);
-                if (!$('mp-theme-input').value.trim()) {
-                    submitTheme(); // auto-submit empty if time runs out
-                }
+                if (!$('mp-theme-input').value.trim()) submitTheme();
             }
         };
-        update();
-        mpState.timerInterval = setInterval(update, 1000);
+        tick();
+        mpState.timerInterval = setInterval(tick, 1000);
     }
 
-    async function submitTheme() {
+    window.submitTheme = async function() {
         clearInterval(mpState.timerInterval);
         const theme = $('mp-theme-input').value.trim() || 'Tema não definido';
         $('mp-theme-input').disabled = true;
         $('mp-theme-submit').style.display = 'none';
         $('mp-theme-waiting').style.display = '';
-
         try {
             await set(ref(db, `rooms/${mpState.roomCode}/themes/${mpState.myUID}`), {
-                playerUID: mpState.myUID,
-                theme,
-                submittedAt: Date.now()
+                playerUID: mpState.myUID, theme, submittedAt: Date.now()
             });
-        } catch (e) {
-            showToast('Erro ao enviar tema: ' + e.message, 'error');
-        }
-    }
+        } catch (e) { showToast('Erro ao enviar tema: ' + e.message, 'error'); }
+    };
 
     function listenToThemes() {
         const themesRef = ref(db, `rooms/${mpState.roomCode}/themes`);
@@ -651,74 +1114,44 @@
             const themes = snap.val() || {};
             const submitted = Object.keys(themes).length;
             const total = mpState.players.length;
-
             $('mp-theme-status').innerText = `${submitted} / ${total} prontos`;
-
-            // Mark done players
             mpState.players.forEach(p => {
                 const dot = $(`prog-${p.uid}`);
-                if (dot) {
-                    dot.classList.toggle('done', themes[p.uid] ? true : false);
-                }
+                if (dot) dot.classList.toggle('done', !!themes[p.uid]);
             });
-
-            // When all submitted, host starts playing phase
             if (submitted === total && mpState.isHost) {
                 clearInterval(mpState.timerInterval);
                 setTimeout(() => initializePlayingPhase(themes), 800);
             }
         });
-
         mpState.listeners.themes = { themesListener: listener };
-    }
-
-    // ════════════════════════════════════════════
-    //  INITIALIZE PLAYING PHASE
-    // ════════════════════════════════════════════
-    async function initializePlayingPhase(themesData) {
-        try {
-            const N = mpState.players.length;
-            const meta = (await get(ref(db, `rooms/${mpState.roomCode}/meta`))).val();
-
-            // Build chains structure
-            const chainsData = {};
-            mpState.players.forEach((p, i) => {
-                chainsData[i] = {
-                    themeSubmitter: p.uid,
-                    theme: themesData[p.uid]?.theme || 'Sem tema',
-                    turns: {}
-                };
-
-                // Create turns for each round
-                for (let r = 0; r < N; r++) {
-                    const assigneeIdx = (i + r + 1) % N;
-                    const assigneeUID = mpState.players[assigneeIdx].uid;
-                    const type = r % 2 === 0 ? 'img' : 'text';
-
-                    chainsData[i].turns[r] = {
-                        round: r,
-                        assignedTo: assigneeUID,
-                        type,
-                        content: null,
-                        submittedAt: null
-                    };
-                }
-            });
-
-            // Write to Firebase
-            await set(ref(db, `rooms/${mpState.roomCode}/chains`), chainsData);
-            await update(ref(db, `rooms/${mpState.roomCode}/meta`), { status: 'playing', currentRound: 0 });
-
-            // Start playing
-            showPlayingPhase();
-        } catch (e) {
-            showToast('Erro ao inicializar jogo: ' + e.message, 'error');
-        }
     }
 
     // ════════════════════════════════════════════
     //  PLAYING PHASE
     // ════════════════════════════════════════════
+    async function initializePlayingPhase(themesData) {
+        try {
+            const N = mpState.players.length;
+            const meta = (await get(ref(db, `rooms/${mpState.roomCode}/meta`))).val();
+            const chainsData = {};
+            mpState.players.forEach((p, i) => {
+                chainsData[i] = {
+                    themeSubmitter: p.uid, theme: themesData[p.uid]?.theme || 'Sem tema', turns: {}
+                };
+                for (let r = 0; r < N; r++) {
+                    const assigneeIdx = (i + r + 1) % N;
+                    const assigneeUID = mpState.players[assigneeIdx].uid;
+                    const type = r % 2 === 0 ? 'img' : 'text';
+                    chainsData[i].turns[r] = { round: r, assignedTo: assigneeUID, type, content: null, submittedAt: null };
+                }
+            });
+            await set(ref(db, `rooms/${mpState.roomCode}/chains`), chainsData);
+            await update(ref(db, `rooms/${mpState.roomCode}/meta`), { status: 'playing', currentRound: 0 });
+            showPlayingPhase();
+        } catch (e) { showToast('Erro ao inicializar jogo: ' + e.message, 'error'); }
+    }
+
     function showPlayingPhase() {
         mpState.gameStatus = 'playing';
         listenToPlayingUpdates();
@@ -727,62 +1160,54 @@
     function listenToPlayingUpdates() {
         const chainsRef = ref(db, `rooms/${mpState.roomCode}/chains`);
         const metaRef = ref(db, `rooms/${mpState.roomCode}/meta`);
-
         const chainsListener = onValue(chainsRef, snap => {
             const chains = snap.val() || {};
             updateCurrentTurn(chains);
         });
-
         const metaListener = onValue(metaRef, snap => {
             const meta = snap.val() || {};
-            if (meta.status === 'results') {
-                showResultsPhase();
-            }
+            if (meta.status === 'results') showResultsPhase();
         });
-
         mpState.listeners.playing = { chainsListener, metaListener };
     }
 
     function updateCurrentTurn(chains) {
-        const meta = Object.values(chains)[0] ? chains : null;
-        if (!meta) return;
-
-        // Find current turn for this player
+        if (!chains) return;
         let found = false;
         for (let chainIdx = 0; chainIdx < Object.keys(chains).length; chainIdx++) {
             const chain = chains[chainIdx];
             const N = mpState.players.length;
-
             for (let round = 0; round < N; round++) {
                 const turn = chain.turns[round];
                 if (turn && turn.assignedTo === mpState.myUID && !turn.content) {
-                    // This is my turn!
                     mpState.currentChainIdx = chainIdx;
                     mpState.currentRound = round;
-
                     if (turn.type === 'img') {
-                        // I need to draw previous content
-                        let prevContent = null;
-                        if (round === 0) {
-                            prevContent = chain.theme;
-                        } else {
-                            prevContent = chain.turns[round - 1]?.content;
-                        }
+                        const prevContent = round === 0 ? chain.theme : chain.turns[round - 1]?.content;
                         showDrawScreen(prevContent, chain.theme);
                     } else {
-                        // I need to guess from previous image
-                        const prevImg = chain.turns[round - 1]?.content;
-                        showGuessScreen(prevImg);
+                        showGuessScreen(chain.turns[round - 1]?.content);
                     }
-                    found = true;
-                    break;
+                    found = true; break;
                 }
             }
             if (found) break;
         }
-
         if (!found) {
-            showWaitingScreen();
+            // Check if all done
+            let allDone = true;
+            for (let chainIdx = 0; chainIdx < Object.keys(chains).length; chainIdx++) {
+                const chain = chains[chainIdx];
+                for (let round = 0; round < mpState.players.length; round++) {
+                    if (!chain.turns[round]?.content) { allDone = false; break; }
+                }
+                if (!allDone) break;
+            }
+            if (allDone && mpState.isHost) {
+                update(ref(db, `rooms/${mpState.roomCode}/meta`), { status: 'results' });
+            } else {
+                showWaitingScreen();
+            }
         }
     }
 
@@ -791,18 +1216,14 @@
     // ════════════════════════════════════════════
     function showDrawScreen(prevContent, origTheme) {
         showScreen('mp-turn-screen');
-        $('mp-turn-label').innerText = 'Desenhe';
+        $('mp-turn-label').innerText = '🎨 Desenhe';
         $('mp-draw-tools').style.display = '';
         $('mp-guess-tools').style.display = 'none';
         $('mp-submit-btn').style.display = '';
         $('mp-guess-submit').style.display = 'none';
-
         let prompt = origTheme;
-        if (typeof prevContent === 'string' && !prevContent.startsWith('data:')) {
-            prompt = prevContent; // previous description
-        }
+        if (typeof prevContent === 'string' && !prevContent.startsWith('data:')) prompt = prevContent;
         $('mp-turn-prompt').innerText = prompt || 'Desenhe qualquer coisa!';
-
         mpCanvasInit();
         startTurnTimer();
     }
@@ -811,40 +1232,34 @@
         const canvas = $('mp-canvas');
         const ctx = canvas.getContext('2d');
         ctx.fillStyle = 'white';
-        ctx.fillRect(0, 0, 350, 350);
+        ctx.fillRect(0, 0, 420, 420);
         mpState.undoStack = [];
-        mpState.usedColors = new Set();
     }
 
     function startTurnTimer() {
         clearInterval(mpState.timerInterval);
-        const meta = Object.values($('mp-turn-timer'));
-        mpState.timerMax = 60; // TODO: get from Firebase meta
+        mpState.timerMax = 60;
         mpState.timerNow = mpState.timerMax;
-
-        const update = () => {
+        const tick = () => {
             $('mp-turn-timer').innerText = mpState.timerNow + 's';
             const pct = (mpState.timerNow / mpState.timerMax) * 100;
             $('mp-turn-bar').style.width = pct + '%';
-            if (pct <= 20) $('mp-turn-bar').classList.add('danger');
-            else if (pct <= 45) $('mp-turn-bar').classList.add('warn');
+            if (pct <= 20) { $('mp-turn-bar').classList.add('danger'); $('mp-turn-bar').classList.remove('warn'); }
+            else if (pct <= 45) { $('mp-turn-bar').classList.add('warn'); $('mp-turn-bar').classList.remove('danger'); }
             else $('mp-turn-bar').classList.remove('warn', 'danger');
-
             mpState.timerNow--;
-            if (mpState.timerNow < 0) {
-                clearInterval(mpState.timerInterval);
-                mpSubmitDraw(true);
-            }
+            if (mpState.timerNow < 0) { clearInterval(mpState.timerInterval); mpSubmitDraw(true); }
         };
-        update();
-        mpState.timerInterval = setInterval(update, 1000);
+        tick();
+        mpState.timerInterval = setInterval(tick, 1000);
     }
 
     // ════════════════════════════════════════════
-    //  CANVAS DRAWING (MINIMAL)
+    //  CANVAS DRAWING
     // ════════════════════════════════════════════
-    let mpDrawing = false, mpPoints = [], mpBrushSize = 8, mpBrushColor = '#000000';
+    let mpDrawing = false, mpPoints = [], mpBrushSize = 7, mpBrushColor = '#000000';
     let mpCanvasCtx = null;
+    let mpUndoSnapshots = [];
 
     function mpCanvasSetup() {
         const canvas = $('mp-canvas');
@@ -853,15 +1268,20 @@
         const getPos = e => {
             const r = canvas.getBoundingClientRect();
             const tp = e.touches ? e.touches[0] : e;
-            return { x: (tp.clientX - r.left) * (350 / r.width), y: (tp.clientY - r.top) * (350 / r.height) };
+            return { x: (tp.clientX - r.left) * (420 / r.width), y: (tp.clientY - r.top) * (420 / r.height) };
+        };
+
+        const saveSnapshot = () => {
+            if (mpUndoSnapshots.length > 20) mpUndoSnapshots.shift();
+            mpUndoSnapshots.push(mpCanvasCtx.getImageData(0, 0, 420, 420));
         };
 
         const onStart = e => {
             if (e.target !== canvas) return;
             e.preventDefault();
+            saveSnapshot();
             mpDrawing = true;
             mpPoints = [getPos(e)];
-            if (mpBrushColor !== '#ffffff') mpState.usedColors.add(mpBrushColor);
         };
 
         const onMove = e => {
@@ -871,8 +1291,8 @@
             mpPoints.push(p);
             if (mpPoints.length > 2) {
                 const last = mpPoints.slice(-3);
-                const m1 = { x: (last[0].x + last[1].x) / 2, y: (last[0].y + last[1].y) / 2 };
-                const m2 = { x: (last[1].x + last[2].x) / 2, y: (last[1].y + last[2].y) / 2 };
+                const m1 = { x: (last[0].x+last[1].x)/2, y: (last[0].y+last[1].y)/2 };
+                const m2 = { x: (last[1].x+last[2].x)/2, y: (last[1].y+last[2].y)/2 };
                 mpCanvasCtx.beginPath();
                 mpCanvasCtx.lineWidth = mpBrushSize;
                 mpCanvasCtx.lineCap = 'round';
@@ -884,12 +1304,7 @@
             }
         };
 
-        const onEnd = () => {
-            if (mpDrawing) {
-                mpDrawing = false;
-                mpPoints = [];
-            }
-        };
+        const onEnd = () => { mpDrawing = false; mpPoints = []; };
 
         canvas.addEventListener('mousedown', onStart);
         canvas.addEventListener('touchstart', onStart, { passive: false });
@@ -897,101 +1312,130 @@
         canvas.addEventListener('touchmove', onMove, { passive: false });
         window.addEventListener('mouseup', onEnd);
         window.addEventListener('touchend', onEnd);
+
+        // Build extended color palette
+        buildColorPalette();
     }
 
-    function mpSetSize(s, btn) {
+    function buildColorPalette() {
+        const palette = $('mp-color-palette');
+        // Extended 40-color palette
+        const colors = [
+            // Blacks / whites / grays
+            '#000000','#1a1a1a','#444444','#808080','#c0c0c0','#f0f0f0','#ffffff',
+            // Reds / pinks
+            '#ff0000','#cc0000','#ff6666','#ff3388','#ff99bb','#cc0066',
+            // Oranges / yellows
+            '#ff6600','#ff9900','#ffcc00','#ffee44','#ffe0a0',
+            // Greens
+            '#00aa00','#33cc33','#99ff44','#00ff88','#006633','#44bb99',
+            // Blues / cyans
+            '#0044ff','#0099ff','#44ccff','#006699','#003377','#aaddff',
+            // Purples / magentas
+            '#6600cc','#9944ff','#cc66ff','#ff00ff','#aa0077','#dd88ff',
+            // Browns / tans
+            '#663300','#aa5500','#cc9966','#ffcc99',
+        ];
+
+        palette.innerHTML = '';
+        colors.forEach(c => {
+            const btn = document.createElement('div');
+            btn.className = 'tool-btn';
+            btn.style.background = c;
+            btn.style.border = c === '#ffffff' ? '2px solid rgba(255,255,255,0.4)' : '2px solid transparent';
+            btn.title = c;
+            btn.onclick = () => {
+                mpSetTool('color', c, btn);
+                btn.style.border = '2px solid white';
+                document.querySelectorAll('#mp-color-palette .tool-btn').forEach(b => {
+                    if (b !== btn) b.style.border = b.style.background === 'rgb(255,255,255)' ? '2px solid rgba(255,255,255,0.4)' : '2px solid transparent';
+                });
+            };
+            if (c === '#000000') {
+                btn.classList.add('active');
+                btn.style.border = '2px solid white';
+            }
+            palette.appendChild(btn);
+        });
+    }
+
+    window.mpSetSize = function(s, btn) {
         mpBrushSize = s;
         document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
         if (btn) btn.classList.add('active');
-    }
+    };
 
-    function mpSetTool(t, v, btn) {
+    window.mpSetTool = function(t, v, btn) {
         if (t === 'color') {
             mpBrushColor = v;
-            document.querySelectorAll('#mp-color-palette .tool-btn').forEach(b => b.classList.remove('active'));
-            if (btn) btn.classList.add('active');
         } else if (t === 'eraser') {
             mpBrushColor = '#ffffff';
-            document.querySelectorAll('#mp-color-palette .tool-btn').forEach(b => b.classList.remove('active'));
-            document.querySelectorAll('.mp-eraser-btn').forEach(b => b.classList.add('active'));
+            document.querySelectorAll('#mp-color-palette .tool-btn').forEach(b => {
+                b.classList.remove('active');
+                b.style.border = b.style.backgroundColor === 'rgb(255, 255, 255)' ? '2px solid rgba(255,255,255,0.4)' : '2px solid transparent';
+            });
         }
-    }
+    };
 
-    function mpResetCanvas() {
+    window.mpResetCanvas = function() {
         mpCanvasCtx.fillStyle = 'white';
-        mpCanvasCtx.fillRect(0, 0, 350, 350);
-        mpState.undoStack = [];
-    }
+        mpCanvasCtx.fillRect(0, 0, 420, 420);
+        mpUndoSnapshots = [];
+    };
 
-    function mpUndo() {
-        // Simple undo (not implemented yet)
-    }
+    window.mpUndo = function() {
+        if (mpUndoSnapshots.length > 0) {
+            mpCanvasCtx.putImageData(mpUndoSnapshots.pop(), 0, 0);
+        } else {
+            showToast('Nada para desfazer.', 'info');
+        }
+    };
 
-    async function mpSubmitDraw(timeout = false) {
+    window.mpSubmitDraw = async function(timeout = false) {
         clearInterval(mpState.timerInterval);
-        const content = $('mp-canvas').toDataURL('image/jpeg', 0.8);
-
+        const content = $('mp-canvas').toDataURL('image/jpeg', 0.82);
         try {
             const turnRef = ref(db, `rooms/${mpState.roomCode}/chains/${mpState.currentChainIdx}/turns/${mpState.currentRound}`);
-            await update(turnRef, {
-                content,
-                submittedAt: Date.now(),
-                timedOut: timeout
-            });
-
+            await update(turnRef, { content, submittedAt: Date.now(), timedOut: timeout });
             showToast('Desenho enviado!', 'success');
             showWaitingScreen();
-        } catch (e) {
-            showToast('Erro ao enviar: ' + e.message, 'error');
-        }
-    }
+        } catch (e) { showToast('Erro ao enviar: ' + e.message, 'error'); }
+    };
 
     // ════════════════════════════════════════════
     //  GUESS SCREEN
     // ════════════════════════════════════════════
     function showGuessScreen(imgDataURL) {
         showScreen('mp-turn-screen');
-        $('mp-turn-label').innerText = 'Descreva';
+        $('mp-turn-label').innerText = '💬 Descreva';
         $('mp-draw-tools').style.display = 'none';
         $('mp-guess-tools').style.display = '';
         $('mp-submit-btn').style.display = 'none';
         $('mp-guess-submit').style.display = '';
-
-        if (imgDataURL && imgDataURL.startsWith('data:')) {
-            $('mp-img-guess').src = imgDataURL;
-        }
-        $('mp-turn-prompt').innerText = 'O que você vê?';
+        if (imgDataURL && imgDataURL.startsWith('data:')) $('mp-img-guess').src = imgDataURL;
+        $('mp-turn-prompt').innerText = 'O que você vê nessa imagem?';
         $('mp-guess-input').value = '';
         $('mp-guess-input').focus();
-
         startTurnTimer();
     }
 
-    async function mpSubmitGuess(timeout = false) {
+    window.mpSubmitGuess = async function(timeout = false) {
         clearInterval(mpState.timerInterval);
         const text = $('mp-guess-input').value.trim() || '...';
-
         try {
             const turnRef = ref(db, `rooms/${mpState.roomCode}/chains/${mpState.currentChainIdx}/turns/${mpState.currentRound}`);
-            await update(turnRef, {
-                content: text,
-                submittedAt: Date.now(),
-                timedOut: timeout
-            });
-
+            await update(turnRef, { content: text, submittedAt: Date.now(), timedOut: timeout });
             showToast('Descrição enviada!', 'success');
             showWaitingScreen();
-        } catch (e) {
-            showToast('Erro ao enviar: ' + e.message, 'error');
-        }
-    }
+        } catch (e) { showToast('Erro ao enviar: ' + e.message, 'error'); }
+    };
 
     // ════════════════════════════════════════════
     //  WAITING SCREEN
     // ════════════════════════════════════════════
     function showWaitingScreen() {
         showScreen('mp-waiting-screen');
-        $('mp-waiting-text').innerText = '⏳ Aguardando os outros jogadores...';
+        $('mp-waiting-text').innerText = 'Aguardando os outros jogadores...';
     }
 
     // ════════════════════════════════════════════
@@ -1001,42 +1445,26 @@
         mpState.gameStatus = 'results';
         clearInterval(mpState.timerInterval);
         cleanupListeners();
-
         showScreen('mp-results-screen');
-
-        // Fetch all chains
         const snap = await get(ref(db, `rooms/${mpState.roomCode}/chains`));
         const chains = snap.val() || {};
-
         const container = $('mp-results-chains');
         container.innerHTML = '';
-
         Object.entries(chains).forEach(([chainIdx, chain]) => {
             const div = document.createElement('div');
             div.style.marginBottom = '20px';
-
-            let html = `<div style="background:rgba(139,92,246,0.15);border:1px dashed rgba(139,92,246,0.4);border-radius:12px;padding:14px;margin-bottom:12px;text-align:center;">
-                <div style="font-size:0.9rem;font-weight:700;color:var(--primary);">🎯 Cadeia ${parseInt(chainIdx) + 1}</div>
+            let html = `<div style="background:rgba(139,92,246,0.12);border:1px dashed rgba(139,92,246,0.35);border-radius:12px;padding:14px;margin-bottom:12px;text-align:center;">
+                <div style="font-size:0.88rem;font-weight:700;color:var(--primary);">🎯 Cadeia ${parseInt(chainIdx)+1}</div>
                 <div style="font-size:0.8rem;color:#94a3b8;margin-top:4px;">Tema Original: <strong>"${chain.theme}"</strong></div>
             </div>`;
-
             Object.entries(chain.turns).forEach(([roundIdx, turn]) => {
                 if (turn.type === 'img') {
-                    html += `<div class="turn-card">
-                        <small style="font-weight:700;color:#64748b;">Turno ${parseInt(roundIdx) + 1} — 🎨 Desenho</small>
-                        <img class="turn-img" src="${turn.content}">
-                    </div>`;
+                    html += `<div class="turn-card"><small style="font-weight:700;color:#64748b;">Turno ${parseInt(roundIdx)+1} — 🎨 Desenho</small><img class="turn-img" src="${turn.content}"></div>`;
                 } else {
-                    html += `<div class="turn-card">
-                        <small style="font-weight:700;color:#ec4899;">Turno ${parseInt(roundIdx) + 1} — 💬 Descrição</small>
-                        <h3 style="margin:10px 0;">"${turn.content}"</h3>
-                    </div>`;
+                    html += `<div class="turn-card"><small style="font-weight:700;color:#ec4899;">Turno ${parseInt(roundIdx)+1} — 💬 Descrição</small><h3 style="margin:10px 0;">"${turn.content}"</h3></div>`;
                 }
-                if (parseInt(roundIdx) < Object.keys(chain.turns).length - 1) {
-                    html += '<div class="chain-sep">↓</div>';
-                }
+                if (parseInt(roundIdx) < Object.keys(chain.turns).length - 1) html += '<div class="chain-sep">↓</div>';
             });
-
             div.innerHTML = html;
             container.appendChild(div);
         });
@@ -1045,7 +1473,7 @@
     // ════════════════════════════════════════════
     //  EXPORTS
     // ════════════════════════════════════════════
-    window.backToMenu = backToMenu;
+    window.backToMenu = window.backToMenu || backToMenu;
     window.startCreateRoom = startCreateRoom;
     window.showJoinScreen = showJoinScreen;
     window.createRoom = createRoom;
@@ -1061,11 +1489,21 @@
     window.mpUndo = mpUndo;
     window.mpSubmitDraw = mpSubmitDraw;
     window.mpSubmitGuess = mpSubmitGuess;
+    window.sendLobbyChat = sendLobbyChat;
+    window.toggleCustomTimer = toggleCustomTimer;
+    window.toggleCustomPack = toggleCustomPack;
+    window.showPublicRooms = showPublicRooms;
+    window.loadPublicRooms = loadPublicRooms;
+    window.joinPublicRoom = joinPublicRoom;
+    window.confirmPublicJoin = confirmPublicJoin;
+    window.kickPlayer = kickPlayer;
+    window.banPlayer = banPlayer;
+    window.backToMenu = function() { mpState.gameStatus = 'menu'; showScreen('mp-menu-screen'); };
 
-    // Initialize canvas on load
+    // Initialize
     mpCanvasSetup();
 </script>
 
-<!-- v2: custom timer, custom packs, expanded color picker, moderation placeholders -->
+<!-- v3: expanded palette (40 colors), larger canvas (420px), lobby chat, kick/ban with modal, player status dots, room passwords, public rooms, conditional custom fields -->
 </body>
 </html>
