@@ -485,7 +485,18 @@
             <button class="tool-btn" style="width:auto;padding:0 10px;font-size:0.78rem;box-shadow:none;margin:0;" onclick="mpUndo()">↩️</button>
             <button class="tool-btn" style="width:auto;padding:0 8px;border-color:var(--danger);box-shadow:none;margin:0;" onclick="mpResetCanvas()">🗑️</button>
         </div>
-        <div class="tools-bar" id="mp-color-palette"></div>
+        <!-- Color palette: basic row always visible, expanded grid optional -->
+        <div style="margin-bottom:8px;">
+            <div class="tools-bar" id="mp-color-basic"></div>
+            <div id="mp-color-palette" style="display:none;"></div>
+            <button id="mp-palette-toggle" onclick="toggleExpandedPalette()"
+                style="width:auto;padding:0 12px;height:28px;font-size:0.72rem;font-weight:700;
+                       box-shadow:none;margin:6px auto 0;display:block;border-radius:8px;
+                       background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);
+                       color:#94a3b8;letter-spacing:0.3px;">
+                &#127912; + cores
+            </button>
+        </div>
         <div id="drawing-area"><canvas id="mp-canvas" width="420" height="420"></canvas></div>
     </div>
 
@@ -822,10 +833,22 @@
         const metaRef = ref(db, `rooms/${mpState.roomCode}/meta`);
         const chatRef = ref(db, `rooms/${mpState.roomCode}/chat`);
 
+        // Shared helper — called by both listeners so each always has fresh data from the other
+        function updateLobbyButtons() {
+            if (mpState.isHost) {
+                $('mp-start-btn').style.display = mpState.players.length >= 2 ? '' : 'none';
+                $('mp-wait-btn').style.display = 'none';
+            } else {
+                $('mp-start-btn').style.display = 'none';
+                $('mp-wait-btn').style.display = '';
+            }
+        }
+
         const playersListener = onValue(playersRef, snap => {
             const players = snap.val() || {};
             mpState.players = Object.entries(players).map(([uid, data]) => ({ uid, ...data }));
             renderPlayersList();
+            updateLobbyButtons(); // re-evaluate button now that players list is fresh
         });
 
         const metaListener = onValue(metaRef, snap => {
@@ -843,13 +866,7 @@
                 showThemeScreen();
             }
 
-            if (mpState.isHost) {
-                $('mp-start-btn').style.display = mpState.players.length >= 2 ? '' : 'none';
-                $('mp-wait-btn').style.display = 'none';
-            } else {
-                $('mp-start-btn').style.display = 'none';
-                $('mp-wait-btn').style.display = '';
-            }
+            updateLobbyButtons(); // also re-evaluate whenever meta changes
         });
 
         const chatListener = onValue(chatRef, snap => {
@@ -1317,46 +1334,74 @@
         buildColorPalette();
     }
 
-    function buildColorPalette() {
-        const palette = $('mp-color-palette');
-        // Extended 40-color palette
-        const colors = [
-            // Blacks / whites / grays
-            '#000000','#1a1a1a','#444444','#808080','#c0c0c0','#f0f0f0','#ffffff',
-            // Reds / pinks
-            '#ff0000','#cc0000','#ff6666','#ff3388','#ff99bb','#cc0066',
-            // Oranges / yellows
-            '#ff6600','#ff9900','#ffcc00','#ffee44','#ffe0a0',
-            // Greens
-            '#00aa00','#33cc33','#99ff44','#00ff88','#006633','#44bb99',
-            // Blues / cyans
-            '#0044ff','#0099ff','#44ccff','#006699','#003377','#aaddff',
-            // Purples / magentas
-            '#6600cc','#9944ff','#cc66ff','#ff00ff','#aa0077','#dd88ff',
-            // Browns / tans
-            '#663300','#aa5500','#cc9966','#ffcc99',
-        ];
+    // Basic 12-color strip always visible; full grid shown on demand
+    const BASIC_COLORS = [
+        '#000000','#ffffff','#808080',
+        '#ff0000','#ff9900','#ffcc00',
+        '#00aa00','#0099ff','#0044ff',
+        '#9944ff','#ff3388','#663300',
+    ];
 
-        palette.innerHTML = '';
-        colors.forEach(c => {
+    const EXTRA_COLORS = [
+        '#1a1a1a','#444444','#c0c0c0','#f0f0f0',
+        '#cc0000','#ff6666','#ff99bb','#cc0066',
+        '#ff6600','#ffee44','#ffe0a0',
+        '#33cc33','#99ff44','#00ff88','#006633','#44bb99',
+        '#44ccff','#006699','#003377','#aaddff',
+        '#6600cc','#cc66ff','#ff00ff','#aa0077','#dd88ff',
+        '#aa5500','#cc9966','#ffcc99',
+    ];
+
+    let paletteExpanded = false;
+
+    window.toggleExpandedPalette = function() {
+        paletteExpanded = !paletteExpanded;
+        const grid = $('mp-color-palette');
+        const btn  = $('mp-palette-toggle');
+        if (paletteExpanded) {
+            grid.style.display = '';
+            btn.textContent = '\u1f3a8 − cores';
+            btn.style.color = 'var(--primary)';
+        } else {
+            grid.style.display = 'none';
+            btn.textContent = '\u1f3a8 + cores';
+            btn.style.color = '#94a3b8';
+        }
+    };
+
+    function buildColorPalette() {
+        const basicRow  = $('mp-color-basic');
+        const extraGrid = $('mp-color-palette');
+        let activePaletteBtn = null;
+
+        function makeColorBtn(c, container) {
             const btn = document.createElement('div');
             btn.className = 'tool-btn';
-            btn.style.background = c;
-            btn.style.border = c === '#ffffff' ? '2px solid rgba(255,255,255,0.4)' : '2px solid transparent';
+            btn.style.cssText = 'background:' + c + ';border:2px solid ' + (c === '#ffffff' ? 'rgba(255,255,255,0.4)' : 'transparent') + ';';
             btn.title = c;
+            btn.dataset.color = c;
             btn.onclick = () => {
-                mpSetTool('color', c, btn);
-                btn.style.border = '2px solid white';
-                document.querySelectorAll('#mp-color-palette .tool-btn').forEach(b => {
-                    if (b !== btn) b.style.border = b.style.background === 'rgb(255,255,255)' ? '2px solid rgba(255,255,255,0.4)' : '2px solid transparent';
-                });
+                if (activePaletteBtn) {
+                    activePaletteBtn.style.outline = '';
+                    activePaletteBtn.style.outlineOffset = '';
+                }
+                activePaletteBtn = btn;
+                btn.style.outline = '2px solid white';
+                btn.style.outlineOffset = '1px';
+                mpBrushColor = c;
             };
             if (c === '#000000') {
-                btn.classList.add('active');
-                btn.style.border = '2px solid white';
+                activePaletteBtn = btn;
+                btn.style.outline = '2px solid white';
+                btn.style.outlineOffset = '1px';
             }
-            palette.appendChild(btn);
-        });
+            container.appendChild(btn);
+        }
+
+        basicRow.innerHTML  = '';
+        extraGrid.innerHTML = '';
+        BASIC_COLORS.forEach(c => makeColorBtn(c, basicRow));
+        EXTRA_COLORS.forEach(c => makeColorBtn(c, extraGrid));
     }
 
     window.mpSetSize = function(s, btn) {
@@ -1369,10 +1414,11 @@
         if (t === 'color') {
             mpBrushColor = v;
         } else if (t === 'eraser') {
+            // Eraser = white brush; deselect any active palette button visually
             mpBrushColor = '#ffffff';
-            document.querySelectorAll('#mp-color-palette .tool-btn').forEach(b => {
-                b.classList.remove('active');
-                b.style.border = b.style.backgroundColor === 'rgb(255, 255, 255)' ? '2px solid rgba(255,255,255,0.4)' : '2px solid transparent';
+            document.querySelectorAll('#mp-color-basic .tool-btn, #mp-color-palette .tool-btn').forEach(b => {
+                b.style.outline = '';
+                b.style.outlineOffset = '';
             });
         }
     };
@@ -1498,6 +1544,7 @@
     window.confirmPublicJoin = confirmPublicJoin;
     window.kickPlayer = kickPlayer;
     window.banPlayer = banPlayer;
+    window.toggleExpandedPalette = toggleExpandedPalette;
     window.backToMenu = function() { mpState.gameStatus = 'menu'; showScreen('mp-menu-screen'); };
 
     // Initialize
