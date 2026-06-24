@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TSF Visual Multiplayer</title>
+    <style>
+        :root {
+            --primary: #8B5CF6;
+            --primary-glow: rgba(139, 92, 246, 0.5);
+            --secondary: #EC4899;
+            --bg-grad: linear-gradient(135deg, #0f172a 0%, #312e81 100%);
+            --glass-bg: rgba(15, 23, 42, 0.88);
+            --glass-border: 1px solid rgba(255, 255, 255, 0.1);
+            --text: #F8FAFC;
+            --danger: #EF4444;
+            --gold: #F59E0B;
+            --success: #22c55e;
+            --warn: #f97316;
+        }
+
+        * { box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            background: var(--bg-grad); background-attachment: fixed; color: var(--text);
+            margin: 0; display: flex; flex-direction: column; align-items: center;
+            min-height: 100vh; text-align: center; overflow-x: hidden; user-select: none;
+        }
+
+        .glass-panel {
+            background: var(--glass-bg); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+            border: var(--glass-border); box-shadow: 0 8px 32px 0 rgba(0,0,0,0.5);
+            border-radius: 20px; transition: transform 0.3s;
+        }
+
+        .screen {
+            display: none; width: 95%; max-width: 550px; padding: 25px; margin: 20px 0;
+            flex-direction: column; animation: slideUp 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+            position: relative; z-index: 10; padding-bottom: 50px;
+        }
+        .screen.active { display: flex; }
+
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
+
+        h1 { margin: 0 0 10px 0; font-weight: 800; letter-spacing: -1px; text-shadow: 0 4px 15px rgba(0,0,0,0.5); font-size: 2rem; }
+        h2 { margin: 5px 0 15px 0; font-size: 1.4rem; color: #cbd5e1; }
+        p { color: #94a3b8; line-height: 1.6; }
+
+        .badge { background: var(--secondary); padding: 3px 8px; border-radius: 6px; font-size: 0.7rem; vertical-align: middle; margin-left: 8px; box-shadow: 0 0 10px var(--secondary); }
+        .badge.success { background: var(--success); box-shadow: 0 0 10px var(--success); }
+        .badge.warn { background: var(--warn); box-shadow: 0 0 10px var(--warn); }
+
+        .input-group { width: 100%; text-align: left; margin-bottom: 15px; }
+        label { display: block; margin-bottom: 6px; font-size: 0.85rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+        input[type="text"], input[type="number"], select, textarea {
+            width: 100%; padding: 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.15);
+            background: rgba(0,0,0,0.3); color: white; font-size: 16px; transition: 0.2s;
+        }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-glow); background: rgba(0,0,0,0.5); }
+
+        button {
+            background: var(--primary); color: white; border: none; padding: 16px; border-radius: 14px;
+            font-size: 1rem; font-weight: 800; cursor: pointer; transition: all 0.1s;
+            width: 100%; box-shadow: 0 4px 0px #5b21b6; margin-top: 10px; position: relative; top: 0;
+        }
+        button:active { top: 4px; box-shadow: 0 0 0 #5b21b6; }
+        button.secondary { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); box-shadow: none; }
+        button.danger { background: rgba(239,68,68,0.2); color: #fca5a5; border: 1px solid var(--danger); box-shadow: none; }
+        button.success-btn { background: var(--success); box-shadow: 0 4px 0px #166534; }
+        button.success-btn:active { box-shadow: 0 0 0 #166534; }
+
+        .timer-bar-wrap { width: 100%; height: 5px; background: rgba(255,255,255,0.08); border-radius: 3px; margin: 6px 0 12px 0; overflow: hidden; }
+        .timer-fill { height: 100%; border-radius: 3px; background: var(--success); width: 100%; transition: width 0.5s linear, background 0.4s; }
+        .timer-fill.warn { background: var(--warn); }
+        .timer-fill.danger { background: var(--danger); }
+
+        /* ═══════ LOBBY ═══════ */
+        .player-card { background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 12px 16px; margin: 8px 0; display: flex; justify-content: space-between; align-items: center; }
+        .player-name { font-weight: 700; color: white; }
+        .player-status { font-size: 0.75rem; color: #64748b; }
+        .player-status.online { color: var(--success); }
+        .badge-host { background: rgba(139,92,246,0.2); color: var(--primary); border: 1px solid rgba(139,92,246,0.4); padding: 2px 8px; border-radius: 5px; font-size: 0.65rem; font-weight: 700; }
+
+        /* ═══════ CODE DISPLAY ═══════ */
+        .code-display { background: rgba(139,92,246,0.15); border: 2px dashed rgba(139,92,246,0.5); border-radius: 12px; padding: 16px; text-align: center; margin: 12px 0; }
+        .code-text { font-size: 2.4rem; font-weight: 900; letter-spacing: 0.5rem; font-family: 'Courier New', monospace; color: var(--primary); margin: 8px 0; }
+        .code-hint { font-size: 0.75rem; color: #64748b; margin-top: 4px; }
+
+        /* ═══════ THEME INPUT ═══════ */
+        .theme-progress { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; justify-content: center; }
+        .progress-dot { width: 32px; height: 32px; border-radius: 50%; background: rgba(255,255,255,0.12); display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; border: 1px solid rgba(255,255,255,0.2); transition: 0.2s; }
+        .progress-dot.done { background: var(--success); border-color: var(--success); color: white; }
+        .progress-dot.current { background: var(--primary); border-color: var(--primary); color: white; animation: pulse 1.5s infinite; }
+
+        /* ═══════ WAITING SCREEN ═══════ */
+        .waiting-card { background: rgba(0,0,0,0.3); border: 1px solid rgba(139,92,246,0.3); border-radius: 14px; padding: 20px; margin: 12px 0; text-align: center; }
+        .waiting-icon { font-size: 2.8rem; animation: pulse 2s infinite; }
+        .waiting-text { color: #94a3b8; margin-top: 8px; }
+
+        /* ═══════ CANVAS ═══════ */
+        #drawing-area {
+            background: white; border-radius: 16px; margin: 15px 0; width: 100%; touch-action: none;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.08), 0 0 0 3px rgba(255,255,255,0.08);
+            overflow: hidden; position: relative; cursor: crosshair;
+        }
+        canvas { display: block; width: 100%; touch-action: none; }
+
+        .tools-bar { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 10px; }
+        .tool-btn {
+            width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: 0.2s; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+            font-size: 1.2rem;
+        }
+        .tool-btn.active { background: var(--primary); border-color: var(--primary); transform: translateY(-3px); box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        .color-dot { width: 22px; height: 22px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.8); pointer-events: none; }
+
+        /* ═══════ TIMELINE ═══════ */
+        .turn-card { background: rgba(0,0,0,0.28); border: 1px solid rgba(255,255,255,0.05); border-radius: 16px; padding: 15px; text-align: left; position: relative; margin: 10px 0; }
+        .turn-img { width: 100%; border-radius: 8px; margin-top: 8px; border: 4px solid white; display: block; }
+        .chain-sep { text-align: center; color: rgba(255,255,255,0.15); font-size: 1.3rem; line-height: 1; padding: 4px 0; }
+
+        /* ═══════ TOAST ═══════ */
+        #toast-wrap { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); z-index: 300; display: flex; flex-direction: column-reverse; gap: 7px; align-items: center; pointer-events: none; width: 90%; max-width: 340px; }
+        .toast { background: rgba(10,15,30,0.96); border-radius: 11px; padding: 10px 15px; font-size: 0.82rem; font-weight: 600; display: flex; align-items: center; gap: 9px; box-shadow: 0 4px 20px rgba(0,0,0,0.55); border: 1px solid rgba(255,255,255,0.08); animation: slideUp 0.25s ease; width: 100%; line-height: 1.4; }
+        .toast.t-success { border-left: 3px solid var(--success); }
+        .toast.t-error { border-left: 3px solid var(--danger); }
+        .toast.t-info { border-left: 3px solid var(--primary); }
+        .toast-icon { font-size: 1rem; flex-shrink: 0; }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+<div id="toast-wrap"></div>
+
+<!-- ═══════ MENU ═══════ -->
+<div id="mp-menu-screen" class="screen glass-panel active">
+    <div style="display:flex;justify-content:center;align-items:center;flex-direction:column;gap:8px;margin-bottom:20px;">
+        <div style="font-size:3rem;line-height:1;">🌐</div>
+        <h1>TSF Multiplayer</h1>
+        <p style="margin:0;font-size:0.9rem;">Jogue com amigos em tempo real!</p>
+    </div>
+
+    <button onclick="startCreateRoom()" class="success-btn" style="margin-bottom:8px;">🎮 CRIAR SALA</button>
+    <button onclick="showJoinScreen()" class="secondary">👥 ENTRAR EM SALA</button>
+</div>
+
+<!-- ═══════ CREATE ROOM ═══════ -->
+<div id="mp-create-screen" class="screen glass-panel">
+    <h2>Criar Nova Sala 🎮</h2>
+    
+    <div class="input-group">
+        <label>Seu Nome</label>
+        <input type="text" id="mp-host-name" placeholder="Digite seu nome..." maxlength="20">
+    </div>
+
+    <div class="input-group">
+        <label>Modo de Jogo</label>
+        <select id="mp-mode">
+            <option value="classic">✏️ Clássico</option>
+            <option value="copy">🖼️ Artistas Copiados</option>
+            <option value="dupla">🎭 Dupla Jornada</option>
+            <option value="caos">🌀 Caos Criativo</option>
+        </select>
+    </div>
+
+    <div class="input-group">
+        <label>Timer</label>
+        <select id="mp-timer">
+            <option value="30">⏱️ 30 segundos (Rápido)</option>
+            <option value="60" selected>⏱️ 60 segundos</option>
+            <option value="90">⏱️ 90 segundos (Confortável)</option>
+        </select>
+    </div>
+
+    <div class="input-group">
+        <label>Pack de Temas</label>
+        <select id="mp-theme-pack">
+            <option value="mixed">🎲 Misturado</option>
+            <option value="memes">🐸 Memes</option>
+            <option value="cinema">🎬 Cinema</option>
+        </select>
+    </div>
+
+    <button onclick="createRoom()" class="success-btn">CRIAR SALA ▶</button>
+    <button onclick="backToMenu()" class="secondary">VOLTAR</button>
+</div>
+
+<!-- ═══════ JOIN ROOM ═══════ -->
+<div id="mp-join-screen" class="screen glass-panel">
+    <h2>Entrar em Sala 👥</h2>
+    
+    <div class="input-group">
+        <label>Seu Nome</label>
+        <input type="text" id="mp-guest-name" placeholder="Digite seu nome..." maxlength="20">
+    </div>
+
+    <div class="input-group">
+        <label>Código da Sala (6 caracteres)</label>
+        <input type="text" id="mp-room-code" placeholder="EX: ABC123" maxlength="6" style="text-transform: uppercase;">
+    </div>
+
+    <button onclick="joinRoom()" class="success-btn">ENTRAR ▶</button>
+    <button onclick="backToMenu()" class="secondary">VOLTAR</button>
+</div>
+
+<!-- ═══════ LOBBY ═══════ -->
+<div id="mp-lobby-screen" class="screen glass-panel">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <h2 style="margin:0;">Lobby</h2>
+        <button onclick="copyRoomCode()" class="tool-btn" style="width:auto;padding:0 10px;box-shadow:none;background:rgba(139,92,246,0.15);border:1px solid rgba(139,92,246,0.3);color:var(--primary);height:36px;font-weight:700;font-size:0.75rem;margin-top:0;">📋 COPIAR CÓDIGO</button>
+    </div>
+
+    <div class="code-display">
+        <div class="code-hint">Compartilhe este código com amigos</div>
+        <div class="code-text" id="mp-lobby-code">—</div>
+    </div>
+
+    <div style="margin: 16px 0;">
+        <label style="text-transform: uppercase; font-size:0.7rem; letter-spacing:1px; color:#64748b;">Jogadores (<span id="mp-player-count">0</span>)</label>
+        <div id="mp-players-list" style="max-height: 300px; overflow-y: auto;">—</div>
+    </div>
+
+    <div id="mp-settings-group" style="margin: 12px 0; padding: 12px; background: rgba(255,255,255,0.04); border-radius: 10px; display:none;">
+        <label style="font-size:0.75rem; text-transform:uppercase; letter-spacing:1px;">⚙️ Configurações da Sala (Host)</label>
+        <div style="margin-top: 8px; font-size:0.82rem; color:#94a3b8;">
+            <div>Modo: <strong id="mp-settings-mode">—</strong></div>
+            <div>Timer: <strong id="mp-settings-timer">—</strong>s</div>
+            <div>Pack: <strong id="mp-settings-pack">—</strong></div>
+        </div>
+    </div>
+
+    <button id="mp-start-btn" onclick="startGame()" class="success-btn" style="display:none;">▶ INICIAR PARTIDA</button>
+    <button id="mp-wait-btn" class="secondary" style="display:none;cursor:default;opacity:0.6;">⏳ Aguardando host iniciar...</button>
+    <button onclick="leaveRoom()" class="danger">SAIR DA SALA</button>
+</div>
+
+<!-- ═══════ THEMES ═══════ -->
+<div id="mp-themes-screen" class="screen glass-panel">
+    <h2>⏱️ Defina seu Tema Secreto</h2>
+    <p style="font-size:0.85rem;">Todos digitam ao mesmo tempo. Ninguém vê os temas dos outros!</p>
+
+    <div class="theme-progress" id="mp-theme-progress"></div>
+
+    <div style="background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.3);border-radius:10px;padding:12px;margin-bottom:12px;text-align:left;">
+        <div style="font-size:0.75rem;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Tempo restante</div>
+        <div class="timer-bar-wrap"><div class="timer-fill" id="mp-theme-timer-fill" style="width:100%;"></div></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:0.9rem;font-weight:700;color:#94a3b8;"><span id="mp-theme-timer">60</span>s</span>
+            <span style="font-size:0.75rem;color:#475569;" id="mp-theme-status">0 / 0 prontos</span>
+        </div>
+    </div>
+
+    <div class="input-group">
+        <label>Seu Tema Secreto 🤫</label>
+        <textarea id="mp-theme-input" placeholder="Ex: Cachorro astronauta, Gato programador..." maxlength="60" style="resize:none;height:60px;" onkeydown="if(event.key==='Enter')submitTheme()"></textarea>
+    </div>
+
+    <button id="mp-theme-submit" onclick="submitTheme()" class="success-btn">ENVIAR TEMA ✓</button>
+    <button id="mp-theme-waiting" class="secondary" style="display:none;cursor:default;opacity:0.6;">⏳ Aguardando outros...</button>
+</div>
+
+<!-- ═══════ TURN ═══════ -->
+<div id="mp-turn-screen" class="screen glass-panel">
+    <div style="display:flex;justify-content:space-between;align-items:center;width:100%;margin-bottom:10px;">
+        <span style="font-size:0.78rem;opacity:0.55;text-transform:uppercase;letter-spacing:1px;" id="mp-turn-label">Desenhe</span>
+        <span id="mp-turn-timer" style="color:var(--gold);font-size:1.15rem;font-weight:800;">60s</span>
+    </div>
+    <div class="timer-bar-wrap"><div class="timer-fill" id="mp-turn-bar"></div></div>
+
+    <h3 id="mp-turn-prompt" style="color:white;margin:2px 0 14px 0;font-size:1.15rem;line-height:1.4;">...</h3>
+
+    <!-- Draw tools -->
+    <div id="mp-draw-tools" style="display:none;">
+        <div class="tools-bar" id="mp-size-bar">
+            <div class="tool-btn size-btn" onclick="mpSetSize(3,this)" title="Fino"><div style="width:4px;height:4px;background:white;border-radius:50%;"></div></div>
+            <div class="tool-btn size-btn active" onclick="mpSetSize(8,this)" title="Médio"><div style="width:9px;height:9px;background:white;border-radius:50%;"></div></div>
+            <div class="tool-btn size-btn" onclick="mpSetSize(22,this)" title="Grosso"><div style="width:18px;height:18px;background:white;border-radius:50%;"></div></div>
+            <div style="width:8px;"></div>
+            <div class="tool-btn" onclick="mpSetTool('eraser',null,this)">🧽</div>
+            <button class="tool-btn" style="width:auto;padding:0 10px;font-size:0.8rem;box-shadow:none;margin:0;" onclick="mpUndo()">↩️</button>
+            <button class="tool-btn" style="width:auto;border-color:var(--danger);box-shadow:none;margin:0;" onclick="mpResetCanvas()">🗑️</button>
+        </div>
+        <div class="tools-bar" id="mp-color-palette"></div>
+        <div id="drawing-area"><canvas id="mp-canvas" width="350" height="350"></canvas></div>
+    </div>
+
+    <!-- Guess input -->
+    <div id="mp-guess-tools" style="display:none;">
+        <div style="background:white;padding:10px;border-radius:12px;margin:10px 0;">
+            <img id="mp-img-guess" style="width:100%;border-radius:8px;display:block;">
+        </div>
+        <input type="text" id="mp-guess-input" placeholder="Descreva aqui..." autocomplete="off" onkeydown="if(event.key==='Enter')mpSubmitGuess()">
+    </div>
+
+    <button id="mp-submit-btn" onclick="mpSubmitDraw()" class="success-btn" style="display:none;margin-top:8px;">ENVIAR ✓</button>
+    <button id="mp-guess-submit" onclick="mpSubmitGuess()" class="success-btn" style="display:none;margin-top:8px;">ENVIAR ✓</button>
+</div>
+
+<!-- ═══════ RESULTS ═══════ -->
+<div id="mp-results-screen" class="screen glass-panel">
+    <h1>🏆 Resultado Final</h1>
+    <p>Veja como suas cadeias evoluíram!</p>
+
+    <div id="mp-results-chains" style="margin-top:16px;"></div>
+
+    <button onclick="backToMenu()" class="success-btn" style="margin-top:20px;">🏠 MENU PRINCIPAL</button>
+</div>
+
+<!-- ═══════ WAITING ═══════ -->
+<div id="mp-waiting-screen" class="screen glass-panel">
+    <div class="waiting-card">
+        <div class="waiting-icon">⏳</div>
+        <h2 style="margin:12px 0 0 0;">Aguardando...</h2>
+        <div class="waiting-text" id="mp-waiting-text">Próximo jogador está na sua vez</div>
+    </div>
+    <button id="mp-waiting-skip" onclick="leaveRoom()" class="danger">SAIR</button>
+</div>
+
+<script type="module">
+    // ════════════════════════════════════════════
+    //  FIREBASE SETUP
+    // ════════════════════════════════════════════
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getDatabase, ref, set, get, onValue, remove, update, off } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyCNqmV3VRmKyyNGamAq3ky4r9ih701p2bw",
+        authDomain: "telefone-sem-fio-a5ad9.firebaseapp.com",
+        projectId: "telefone-sem-fio-a5ad9",
+        databaseURL: "https://telefone-sem-fio-a5ad9-default-rtdb.firebaseio.com",
+        storageBucket: "telefone-sem-fio-a5ad9.firebasestorage.app",
+        messagingSenderId: "135886801481",
+        appId: "1:135886801481:web:2963fead9612f4edaa0d98",
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    // ════════════════════════════════════════════
+    //  STATE
+    // ════════════════════════════════════════════
+    let mpState = {
+        mode: 'online',
+        myUID: 'user_' + Math.random().toString(36).substr(2, 9),
+        myName: '',
+        isHost: false,
+        roomCode: '',
+        players: [],
+        currentRound: 0,
+        currentChainIdx: 0,
+        gameStatus: 'menu', // menu, lobby, themes, playing, results, waiting
+        timerInterval: null,
+        timerMax: 60,
+        timerNow: 60,
+        undoStack: [],
+        usedColors: new Set(),
+        listeners: {}, // store Firebase listeners para cleanup
+    };
+
+    const $ = id => document.getElementById(id);
+
+    // ════════════════════════════════════════════
+    //  HELPERS
+    // ════════════════════════════════════════════
+    function generateRoomCode() {
+        return Math.random().toString(36).substr(2, 6).toUpperCase();
+    }
+
+    function showScreen(id) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        $(id).classList.add('active');
+        window.scrollTo(0, 0);
+    }
+
+    function showToast(msg, type = 'info') {
+        const wrap = $('toast-wrap');
+        const el = document.createElement('div');
+        el.className = `toast t-${type}`;
+        const icons = { success: '✅', error: '❌', info: 'ℹ️', warn: '⚠️' };
+        el.innerHTML = `<span class="toast-icon">${icons[type] || '•'}</span><span>${msg}</span>`;
+        wrap.prepend(el);
+        setTimeout(() => el.remove(), 3200);
+    }
+
+    // ════════════════════════════════════════════
+    //  MENU FLOW
+    // ════════════════════════════════════════════
+    function backToMenu() {
+        mpState.gameStatus = 'menu';
+        showScreen('mp-menu-screen');
+    }
+
+    function startCreateRoom() {
+        showScreen('mp-create-screen');
+        $('mp-host-name').focus();
+    }
+
+    function showJoinScreen() {
+        showScreen('mp-join-screen');
+        $('mp-guest-name').focus();
+    }
+
+    // ════════════════════════════════════════════
+    //  CREATE ROOM
+    // ════════════════════════════════════════════
+    async function createRoom() {
+        const name = $('mp-host-name').value.trim();
+        if (!name) { showToast('Digite seu nome!', 'warn'); return; }
+
+        mpState.myName = name;
+        mpState.isHost = true;
+        mpState.roomCode = generateRoomCode();
+        mpState.gameStatus = 'lobby';
+
+        const mode = $('mp-mode').value;
+        const timer = parseInt($('mp-timer').value);
+        const pack = $('mp-theme-pack').value;
+
+        // Criar sala no Firebase
+        try {
+            await set(ref(db, `rooms/${mpState.roomCode}`), {
+                meta: {
+                    host: mpState.myUID,
+                    status: 'lobby',
+                    createdAt: Date.now(),
+                    mode, timer, pack,
+                    playerCount: 1,
+                },
+                players: {
+                    [mpState.myUID]: {
+                        name, online: true, isHost: true, joinedAt: Date.now()
+                    }
+                }
+            });
+
+            showToast(`Sala criada! Código: ${mpState.roomCode}`, 'success');
+            showLobby();
+        } catch (e) {
+            showToast('Erro ao criar sala: ' + e.message, 'error');
+        }
+    }
+
+    // ════════════════════════════════════════════
+    //  JOIN ROOM
+    // ════════════════════════════════════════════
+    async function joinRoom() {
+        const name = $('mp-guest-name').value.trim();
+        const code = $('mp-room-code').value.toUpperCase().trim();
+
+        if (!name) { showToast('Digite seu nome!', 'warn'); return; }
+        if (!code || code.length !== 6) { showToast('Código inválido (6 caracteres)!', 'warn'); return; }
+
+        try {
+            // Verificar se sala existe
+            const snap = await get(ref(db, `rooms/${code}`));
+            if (!snap.exists()) {
+                showToast('Sala não encontrada!', 'error');
+                return;
+            }
+
+            mpState.myName = name;
+            mpState.roomCode = code;
+            mpState.isHost = false;
+            mpState.gameStatus = 'lobby';
+
+            // Adicionar player à sala
+            await set(ref(db, `rooms/${code}/players/${mpState.myUID}`), {
+                name, online: true, isHost: false, joinedAt: Date.now()
+            });
+
+            showToast(`Entrou na sala ${code}!`, 'success');
+            showLobby();
+        } catch (e) {
+            showToast('Erro ao entrar: ' + e.message, 'error');
+        }
+    }
+
+    // ════════════════════════════════════════════
+    //  LOBBY
+    // ════════════════════════════════════════════
+    function showLobby() {
+        showScreen('mp-lobby-screen');
+        $('mp-lobby-code').innerText = mpState.roomCode;
+        listenToLobby();
+    }
+
+    function listenToLobby() {
+        const playersRef = ref(db, `rooms/${mpState.roomCode}/players`);
+        const metaRef = ref(db, `rooms/${mpState.roomCode}/meta`);
+
+        const playersListener = onValue(playersRef, snap => {
+            const players = snap.val() || {};
+            mpState.players = Object.entries(players).map(([uid, data]) => ({ uid, ...data }));
+            renderPlayersList();
+        });
+
+        const metaListener = onValue(metaRef, snap => {
+            const meta = snap.val() || {};
+            $('mp-settings-mode').innerText = meta.mode || '—';
+            $('mp-settings-timer').innerText = meta.timer || '—';
+            $('mp-settings-pack').innerText = meta.pack || '—';
+
+            if (mpState.isHost) {
+                $('mp-settings-group').style.display = '';
+                $('mp-start-btn').style.display = mpState.players.length >= 2 ? '' : 'none';
+                $('mp-wait-btn').style.display = 'none';
+            } else {
+                $('mp-start-btn').style.display = 'none';
+                $('mp-wait-btn').style.display = '';
+            }
+        });
+
+        mpState.listeners.lobby = { playersListener, metaListener };
+    }
+
+    function renderPlayersList() {
+        const list = $('mp-players-list');
+        $('mp-player-count').innerText = mpState.players.length;
+
+        list.innerHTML = mpState.players.map(p => `
+            <div class="player-card">
+                <div>
+                    <div class="player-name">${p.name}</div>
+                    <div class="player-status online">● Online</div>
+                </div>
+                <div>${p.isHost ? '<span class="badge-host">HOST</span>' : ''}</div>
+            </div>
+        `).join('');
+    }
+
+    function copyRoomCode() {
+        navigator.clipboard.writeText(mpState.roomCode);
+        showToast(`Código ${mpState.roomCode} copiado!`, 'success');
+    }
+
+    async function startGame() {
+        if (!mpState.isHost) return;
+        if (mpState.players.length < 2) {
+            showToast('Mínimo 2 jogadores!', 'warn');
+            return;
+        }
+
+        try {
+            await update(ref(db, `rooms/${mpState.roomCode}/meta`), { status: 'themes' });
+            showThemeScreen();
+        } catch (e) {
+            showToast('Erro ao iniciar: ' + e.message, 'error');
+        }
+    }
+
+    async function leaveRoom() {
+        try {
+            const playerRef = ref(db, `rooms/${mpState.roomCode}/players/${mpState.myUID}`);
+            await remove(playerRef);
+
+            // Se era host, deletar sala
+            if (mpState.isHost) {
+                const roomRef = ref(db, `rooms/${mpState.roomCode}`);
+                await remove(roomRef);
+            }
+
+            cleanupListeners();
+            mpState.gameStatus = 'menu';
+            backToMenu();
+            showToast('Você saiu da sala.', 'info');
+        } catch (e) {
+            showToast('Erro ao sair: ' + e.message, 'error');
+        }
+    }
+
+    function cleanupListeners() {
+        Object.values(mpState.listeners).forEach(listener => {
+            if (listener.playersListener) off(ref(db, `rooms/${mpState.roomCode}/players`), 'value', listener.playersListener);
+            if (listener.metaListener) off(ref(db, `rooms/${mpState.roomCode}/meta`), 'value', listener.metaListener);
+            if (listener.themesListener) off(ref(db, `rooms/${mpState.roomCode}/themes`), 'value', listener.themesListener);
+        });
+        mpState.listeners = {};
+    }
+
+    // ════════════════════════════════════════════
+    //  THEMES SCREEN
+    // ════════════════════════════════════════════
+    function showThemeScreen() {
+        mpState.gameStatus = 'themes';
+        showScreen('mp-themes-screen');
+        renderThemeProgress();
+        startThemeTimer(60);
+        listenToThemes();
+        $('mp-theme-input').focus();
+    }
+
+    function renderThemeProgress() {
+        const progress = $('mp-theme-progress');
+        progress.innerHTML = mpState.players.map((p, i) => `
+            <div class="progress-dot ${i === 0 ? 'current' : ''}" id="prog-${p.uid}" title="${p.name}">
+                ${i + 1}
+            </div>
+        `).join('');
+    }
+
+    function startThemeTimer(secs) {
+        mpState.timerMax = secs;
+        mpState.timerNow = secs;
+        clearInterval(mpState.timerInterval);
+
+        const update = () => {
+            const pct = (mpState.timerNow / mpState.timerMax) * 100;
+            $('mp-theme-timer-fill').style.width = pct + '%';
+            $('mp-theme-timer').innerText = mpState.timerNow;
+            mpState.timerNow--;
+            if (mpState.timerNow < 0) {
+                clearInterval(mpState.timerInterval);
+                if (!$('mp-theme-input').value.trim()) {
+                    submitTheme(); // auto-submit empty if time runs out
+                }
+            }
+        };
+        update();
+        mpState.timerInterval = setInterval(update, 1000);
+    }
+
+    async function submitTheme() {
+        clearInterval(mpState.timerInterval);
+        const theme = $('mp-theme-input').value.trim() || 'Tema não definido';
+        $('mp-theme-input').disabled = true;
+        $('mp-theme-submit').style.display = 'none';
+        $('mp-theme-waiting').style.display = '';
+
+        try {
+            await set(ref(db, `rooms/${mpState.roomCode}/themes/${mpState.myUID}`), {
+                playerUID: mpState.myUID,
+                theme,
+                submittedAt: Date.now()
+            });
+        } catch (e) {
+            showToast('Erro ao enviar tema: ' + e.message, 'error');
+        }
+    }
+
+    function listenToThemes() {
+        const themesRef = ref(db, `rooms/${mpState.roomCode}/themes`);
+        const listener = onValue(themesRef, snap => {
+            const themes = snap.val() || {};
+            const submitted = Object.keys(themes).length;
+            const total = mpState.players.length;
+
+            $('mp-theme-status').innerText = `${submitted} / ${total} prontos`;
+
+            // Mark done players
+            mpState.players.forEach(p => {
+                const dot = $(`prog-${p.uid}`);
+                if (dot) {
+                    dot.classList.toggle('done', themes[p.uid] ? true : false);
+                }
+            });
+
+            // When all submitted, host starts playing phase
+            if (submitted === total && mpState.isHost) {
+                clearInterval(mpState.timerInterval);
+                setTimeout(() => initializePlayingPhase(themes), 800);
+            }
+        });
+
+        mpState.listeners.themes = { themesListener: listener };
+    }
+
+    // ════════════════════════════════════════════
+    //  INITIALIZE PLAYING PHASE
+    // ════════════════════════════════════════════
+    async function initializePlayingPhase(themesData) {
+        try {
+            const N = mpState.players.length;
+            const meta = (await get(ref(db, `rooms/${mpState.roomCode}/meta`))).val();
+
+            // Build chains structure
+            const chainsData = {};
+            mpState.players.forEach((p, i) => {
+                chainsData[i] = {
+                    themeSubmitter: p.uid,
+                    theme: themesData[p.uid]?.theme || 'Sem tema',
+                    turns: {}
+                };
+
+                // Create turns for each round
+                for (let r = 0; r < N; r++) {
+                    const assigneeIdx = (i + r + 1) % N;
+                    const assigneeUID = mpState.players[assigneeIdx].uid;
+                    const type = r % 2 === 0 ? 'img' : 'text';
+
+                    chainsData[i].turns[r] = {
+                        round: r,
+                        assignedTo: assigneeUID,
+                        type,
+                        content: null,
+                        submittedAt: null
+                    };
+                }
+            });
+
+            // Write to Firebase
+            await set(ref(db, `rooms/${mpState.roomCode}/chains`), chainsData);
+            await update(ref(db, `rooms/${mpState.roomCode}/meta`), { status: 'playing', currentRound: 0 });
+
+            // Start playing
+            showPlayingPhase();
+        } catch (e) {
+            showToast('Erro ao inicializar jogo: ' + e.message, 'error');
+        }
+    }
+
+    // ════════════════════════════════════════════
+    //  PLAYING PHASE
+    // ════════════════════════════════════════════
+    function showPlayingPhase() {
+        mpState.gameStatus = 'playing';
+        listenToPlayingUpdates();
+    }
+
+    function listenToPlayingUpdates() {
+        const chainsRef = ref(db, `rooms/${mpState.roomCode}/chains`);
+        const metaRef = ref(db, `rooms/${mpState.roomCode}/meta`);
+
+        const chainsListener = onValue(chainsRef, snap => {
+            const chains = snap.val() || {};
+            updateCurrentTurn(chains);
+        });
+
+        const metaListener = onValue(metaRef, snap => {
+            const meta = snap.val() || {};
+            if (meta.status === 'results') {
+                showResultsPhase();
+            }
+        });
+
+        mpState.listeners.playing = { chainsListener, metaListener };
+    }
+
+    function updateCurrentTurn(chains) {
+        const meta = Object.values(chains)[0] ? chains : null;
+        if (!meta) return;
+
+        // Find current turn for this player
+        let found = false;
+        for (let chainIdx = 0; chainIdx < Object.keys(chains).length; chainIdx++) {
+            const chain = chains[chainIdx];
+            const N = mpState.players.length;
+
+            for (let round = 0; round < N; round++) {
+                const turn = chain.turns[round];
+                if (turn && turn.assignedTo === mpState.myUID && !turn.content) {
+                    // This is my turn!
+                    mpState.currentChainIdx = chainIdx;
+                    mpState.currentRound = round;
+
+                    if (turn.type === 'img') {
+                        // I need to draw previous content
+                        let prevContent = null;
+                        if (round === 0) {
+                            prevContent = chain.theme;
+                        } else {
+                            prevContent = chain.turns[round - 1]?.content;
+                        }
+                        showDrawScreen(prevContent, chain.theme);
+                    } else {
+                        // I need to guess from previous image
+                        const prevImg = chain.turns[round - 1]?.content;
+                        showGuessScreen(prevImg);
+                    }
+                    found = true;
+                    break;
+                }
+            }
+            if (found) break;
+        }
+
+        if (!found) {
+            showWaitingScreen();
+        }
+    }
+
+    // ════════════════════════════════════════════
+    //  DRAW SCREEN
+    // ════════════════════════════════════════════
+    function showDrawScreen(prevContent, origTheme) {
+        showScreen('mp-turn-screen');
+        $('mp-turn-label').innerText = 'Desenhe';
+        $('mp-draw-tools').style.display = '';
+        $('mp-guess-tools').style.display = 'none';
+        $('mp-submit-btn').style.display = '';
+        $('mp-guess-submit').style.display = 'none';
+
+        let prompt = origTheme;
+        if (typeof prevContent === 'string' && !prevContent.startsWith('data:')) {
+            prompt = prevContent; // previous description
+        }
+        $('mp-turn-prompt').innerText = prompt || 'Desenhe qualquer coisa!';
+
+        mpCanvasInit();
+        startTurnTimer();
+    }
+
+    function mpCanvasInit() {
+        const canvas = $('mp-canvas');
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, 350, 350);
+        mpState.undoStack = [];
+        mpState.usedColors = new Set();
+    }
+
+    function startTurnTimer() {
+        clearInterval(mpState.timerInterval);
+        const meta = Object.values($('mp-turn-timer'));
+        mpState.timerMax = 60; // TODO: get from Firebase meta
+        mpState.timerNow = mpState.timerMax;
+
+        const update = () => {
+            $('mp-turn-timer').innerText = mpState.timerNow + 's';
+            const pct = (mpState.timerNow / mpState.timerMax) * 100;
+            $('mp-turn-bar').style.width = pct + '%';
+            if (pct <= 20) $('mp-turn-bar').classList.add('danger');
+            else if (pct <= 45) $('mp-turn-bar').classList.add('warn');
+            else $('mp-turn-bar').classList.remove('warn', 'danger');
+
+            mpState.timerNow--;
+            if (mpState.timerNow < 0) {
+                clearInterval(mpState.timerInterval);
+                mpSubmitDraw(true);
+            }
+        };
+        update();
+        mpState.timerInterval = setInterval(update, 1000);
+    }
+
+    // ════════════════════════════════════════════
+    //  CANVAS DRAWING (MINIMAL)
+    // ════════════════════════════════════════════
+    let mpDrawing = false, mpPoints = [], mpBrushSize = 8, mpBrushColor = '#000000';
+    let mpCanvasCtx = null;
+
+    function mpCanvasSetup() {
+        const canvas = $('mp-canvas');
+        mpCanvasCtx = canvas.getContext('2d');
+
+        const getPos = e => {
+            const r = canvas.getBoundingClientRect();
+            const tp = e.touches ? e.touches[0] : e;
+            return { x: (tp.clientX - r.left) * (350 / r.width), y: (tp.clientY - r.top) * (350 / r.height) };
+        };
+
+        const onStart = e => {
+            if (e.target !== canvas) return;
+            e.preventDefault();
+            mpDrawing = true;
+            mpPoints = [getPos(e)];
+            if (mpBrushColor !== '#ffffff') mpState.usedColors.add(mpBrushColor);
+        };
+
+        const onMove = e => {
+            if (!mpDrawing) return;
+            e.preventDefault();
+            const p = getPos(e);
+            mpPoints.push(p);
+            if (mpPoints.length > 2) {
+                const last = mpPoints.slice(-3);
+                const m1 = { x: (last[0].x + last[1].x) / 2, y: (last[0].y + last[1].y) / 2 };
+                const m2 = { x: (last[1].x + last[2].x) / 2, y: (last[1].y + last[2].y) / 2 };
+                mpCanvasCtx.beginPath();
+                mpCanvasCtx.lineWidth = mpBrushSize;
+                mpCanvasCtx.lineCap = 'round';
+                mpCanvasCtx.lineJoin = 'round';
+                mpCanvasCtx.strokeStyle = mpBrushColor;
+                mpCanvasCtx.moveTo(m1.x, m1.y);
+                mpCanvasCtx.quadraticCurveTo(last[1].x, last[1].y, m2.x, m2.y);
+                mpCanvasCtx.stroke();
+            }
+        };
+
+        const onEnd = () => {
+            if (mpDrawing) {
+                mpDrawing = false;
+                mpPoints = [];
+            }
+        };
+
+        canvas.addEventListener('mousedown', onStart);
+        canvas.addEventListener('touchstart', onStart, { passive: false });
+        canvas.addEventListener('mousemove', onMove);
+        canvas.addEventListener('touchmove', onMove, { passive: false });
+        window.addEventListener('mouseup', onEnd);
+        window.addEventListener('touchend', onEnd);
+    }
+
+    function mpSetSize(s, btn) {
+        mpBrushSize = s;
+        document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
+        if (btn) btn.classList.add('active');
+    }
+
+    function mpSetTool(t, v, btn) {
+        if (t === 'color') {
+            mpBrushColor = v;
+            document.querySelectorAll('#mp-color-palette .tool-btn').forEach(b => b.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+        } else if (t === 'eraser') {
+            mpBrushColor = '#ffffff';
+            document.querySelectorAll('#mp-color-palette .tool-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.mp-eraser-btn').forEach(b => b.classList.add('active'));
+        }
+    }
+
+    function mpResetCanvas() {
+        mpCanvasCtx.fillStyle = 'white';
+        mpCanvasCtx.fillRect(0, 0, 350, 350);
+        mpState.undoStack = [];
+    }
+
+    function mpUndo() {
+        // Simple undo (not implemented yet)
+    }
+
+    async function mpSubmitDraw(timeout = false) {
+        clearInterval(mpState.timerInterval);
+        const content = $('mp-canvas').toDataURL('image/jpeg', 0.8);
+
+        try {
+            const turnRef = ref(db, `rooms/${mpState.roomCode}/chains/${mpState.currentChainIdx}/turns/${mpState.currentRound}`);
+            await update(turnRef, {
+                content,
+                submittedAt: Date.now(),
+                timedOut: timeout
+            });
+
+            showToast('Desenho enviado!', 'success');
+            showWaitingScreen();
+        } catch (e) {
+            showToast('Erro ao enviar: ' + e.message, 'error');
+        }
+    }
+
+    // ════════════════════════════════════════════
+    //  GUESS SCREEN
+    // ════════════════════════════════════════════
+    function showGuessScreen(imgDataURL) {
+        showScreen('mp-turn-screen');
+        $('mp-turn-label').innerText = 'Descreva';
+        $('mp-draw-tools').style.display = 'none';
+        $('mp-guess-tools').style.display = '';
+        $('mp-submit-btn').style.display = 'none';
+        $('mp-guess-submit').style.display = '';
+
+        if (imgDataURL && imgDataURL.startsWith('data:')) {
+            $('mp-img-guess').src = imgDataURL;
+        }
+        $('mp-turn-prompt').innerText = 'O que você vê?';
+        $('mp-guess-input').value = '';
+        $('mp-guess-input').focus();
+
+        startTurnTimer();
+    }
+
+    async function mpSubmitGuess(timeout = false) {
+        clearInterval(mpState.timerInterval);
+        const text = $('mp-guess-input').value.trim() || '...';
+
+        try {
+            const turnRef = ref(db, `rooms/${mpState.roomCode}/chains/${mpState.currentChainIdx}/turns/${mpState.currentRound}`);
+            await update(turnRef, {
+                content: text,
+                submittedAt: Date.now(),
+                timedOut: timeout
+            });
+
+            showToast('Descrição enviada!', 'success');
+            showWaitingScreen();
+        } catch (e) {
+            showToast('Erro ao enviar: ' + e.message, 'error');
+        }
+    }
+
+    // ════════════════════════════════════════════
+    //  WAITING SCREEN
+    // ════════════════════════════════════════════
+    function showWaitingScreen() {
+        showScreen('mp-waiting-screen');
+        $('mp-waiting-text').innerText = '⏳ Aguardando os outros jogadores...';
+    }
+
+    // ════════════════════════════════════════════
+    //  RESULTS PHASE
+    // ════════════════════════════════════════════
+    async function showResultsPhase() {
+        mpState.gameStatus = 'results';
+        clearInterval(mpState.timerInterval);
+        cleanupListeners();
+
+        showScreen('mp-results-screen');
+
+        // Fetch all chains
+        const snap = await get(ref(db, `rooms/${mpState.roomCode}/chains`));
+        const chains = snap.val() || {};
+
+        const container = $('mp-results-chains');
+        container.innerHTML = '';
+
+        Object.entries(chains).forEach(([chainIdx, chain]) => {
+            const div = document.createElement('div');
+            div.style.marginBottom = '20px';
+
+            let html = `<div style="background:rgba(139,92,246,0.15);border:1px dashed rgba(139,92,246,0.4);border-radius:12px;padding:14px;margin-bottom:12px;text-align:center;">
+                <div style="font-size:0.9rem;font-weight:700;color:var(--primary);">🎯 Cadeia ${parseInt(chainIdx) + 1}</div>
+                <div style="font-size:0.8rem;color:#94a3b8;margin-top:4px;">Tema Original: <strong>"${chain.theme}"</strong></div>
+            </div>`;
+
+            Object.entries(chain.turns).forEach(([roundIdx, turn]) => {
+                if (turn.type === 'img') {
+                    html += `<div class="turn-card">
+                        <small style="font-weight:700;color:#64748b;">Turno ${parseInt(roundIdx) + 1} — 🎨 Desenho</small>
+                        <img class="turn-img" src="${turn.content}">
+                    </div>`;
+                } else {
+                    html += `<div class="turn-card">
+                        <small style="font-weight:700;color:#ec4899;">Turno ${parseInt(roundIdx) + 1} — 💬 Descrição</small>
+                        <h3 style="margin:10px 0;">"${turn.content}"</h3>
+                    </div>`;
+                }
+                if (parseInt(roundIdx) < Object.keys(chain.turns).length - 1) {
+                    html += '<div class="chain-sep">↓</div>';
+                }
+            });
+
+            div.innerHTML = html;
+            container.appendChild(div);
+        });
+    }
+
+    // ════════════════════════════════════════════
+    //  EXPORTS
+    // ════════════════════════════════════════════
+    window.backToMenu = backToMenu;
+    window.startCreateRoom = startCreateRoom;
+    window.showJoinScreen = showJoinScreen;
+    window.createRoom = createRoom;
+    window.joinRoom = joinRoom;
+    window.showLobby = showLobby;
+    window.copyRoomCode = copyRoomCode;
+    window.startGame = startGame;
+    window.leaveRoom = leaveRoom;
+    window.submitTheme = submitTheme;
+    window.mpSetSize = mpSetSize;
+    window.mpSetTool = mpSetTool;
+    window.mpResetCanvas = mpResetCanvas;
+    window.mpUndo = mpUndo;
+    window.mpSubmitDraw = mpSubmitDraw;
+    window.mpSubmitGuess = mpSubmitGuess;
+
+    // Initialize canvas on load
+    mpCanvasSetup();
+</script>
+
+</body>
+</html>
